@@ -28,6 +28,10 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<Either<Failure, UserEntity>> signInAsTestBuyer() =>
+      _guard<UserEntity>(remoteDataSource.signInAsTestBuyer);
+
+  @override
   Future<Either<Failure, UserEntity>> signUpWithRole({
     required String uid,
     required String email,

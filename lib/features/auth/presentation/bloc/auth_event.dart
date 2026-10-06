@@ -9,6 +9,10 @@ sealed class AuthEvent extends Equatable {
 
 final class AuthGoogleSignInRequested extends AuthEvent {}
 
+/// Sign in as a guest buyer, skipping Google and role selection. Temporary:
+/// see `kTestBuyerLoginEnabled`.
+final class AuthTestBuyerSignInRequested extends AuthEvent {}
+
 final class AuthSignUpWithRoleRequested extends AuthEvent {
   final String uid;
   final String email;

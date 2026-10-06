@@ -623,6 +623,10 @@ class _FakeAccountAuthRepository implements AuthRepository {
       getCurrentUser();
 
   @override
+  Future<Either<Failure, UserEntity>> signInAsTestBuyer() async =>
+      getCurrentUser();
+
+  @override
   Future<Either<Failure, UserEntity>> signUpWithRole({
     required String uid,
     required String email,

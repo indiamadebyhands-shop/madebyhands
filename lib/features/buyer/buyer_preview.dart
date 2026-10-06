@@ -64,6 +64,9 @@ class FakeAuthRepository implements AuthRepository {
   Future<Either<Failure, UserEntity>> signInWithGoogle() async =>
       throw UnimplementedError();
   @override
+  Future<Either<Failure, UserEntity>> signInAsTestBuyer() async =>
+      throw UnimplementedError();
+  @override
   Future<Either<Failure, UserEntity>> signUpWithRole({
     required String uid,
     required String email,

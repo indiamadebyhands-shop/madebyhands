@@ -10,6 +10,10 @@ class SignedOutFailure extends Failure {
 
 abstract interface class AuthRepository {
   Future<Either<Failure, UserEntity>> signInWithGoogle();
+
+  /// Signs in as a fresh guest buyer, skipping Google and role selection.
+  /// Temporary: see `kTestBuyerLoginEnabled`.
+  Future<Either<Failure, UserEntity>> signInAsTestBuyer();
   Future<Either<Failure, UserEntity>> signUpWithRole({
     required String uid,
     required String email,
