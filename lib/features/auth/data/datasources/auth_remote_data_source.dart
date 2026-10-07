@@ -10,10 +10,6 @@ import 'package:madebyhands/features/auth/domain/entities/user_entity.dart';
 
 abstract interface class AuthRemoteDataSource {
   Future<UserModel?> signInWithGoogle();
-
-  /// Signs in as a fresh guest buyer without Google or role selection. Only
-  /// offered while `kTestBuyerLoginEnabled` is on.
-  Future<UserModel> signInAsTestBuyer();
   Future<UserModel> signUpWithRole({
     required String uid,
     required String email,
@@ -106,43 +102,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       debugPrint('Google sign-in error: $e');
       rethrow;
     }
-  }
-
-  @override
-  Future<UserModel> signInAsTestBuyer() async {
-    final UserCredential credential;
-    try {
-      credential = await firebaseAuth.signInAnonymously();
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'operation-not-allowed' ||
-          e.code == 'admin-restricted-operation') {
-        throw Exception(
-          'Test sign-in is not switched on for this project yet.',
-        );
-      }
-      throw Exception(e.message ?? 'Test sign-in failed. Please try again.');
-    }
-    final user = credential.user;
-    if (user == null) {
-      throw Exception('Test sign-in failed. Please try again.');
-    }
-
-    // A returning guest (same browser, still signed in) keeps their profile.
-    final reference = firestore.collection('users').doc(user.uid);
-    final existing = await reference.get();
-    if (existing.exists && existing.data() != null) {
-      return _userFromDocument(existing);
-    }
-    final profile = UserModel(
-      uid: user.uid,
-      email: '',
-      name: 'Test Buyer',
-      role: 'buyer',
-    );
-    // isTestAccount marks the document so guests are easy to find and
-    // delete once the review is over.
-    await reference.set({...profile.toJson(), 'isTestAccount': true});
-    return profile;
   }
 
   @override

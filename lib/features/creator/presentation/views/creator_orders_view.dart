@@ -601,7 +601,11 @@ class _OrderDetailSheet extends StatelessWidget {
                         style: FilledButton.styleFrom(
                           backgroundColor: const Color(0xFF8B261D),
                         ),
-                        child: Text('Mark as $nextStatus'),
+                        child: Text(
+                          OrderStatus.isDelivered(nextStatus)
+                              ? 'Mark as delivered'
+                              : 'Mark as $nextStatus',
+                        ),
                       ),
                     ),
                   ],
@@ -617,6 +621,8 @@ class _OrderDetailSheet extends StatelessWidget {
   void _advanceStatus(BuildContext context, String nextStatus) {
     if (nextStatus == 'In-Transit') {
       _showConsignmentDialog(context);
+    } else if (OrderStatus.isDelivered(nextStatus)) {
+      _confirmDelivered(context, nextStatus);
     } else {
       context.read<CreatorBloc>().add(
             CreatorUpdateOrderStatus(
@@ -628,6 +634,89 @@ class _OrderDetailSheet extends StatelessWidget {
           );
       Navigator.pop(context);
     }
+  }
+
+  /// Delivery can't be undone and releases the payout, so the creator must
+  /// tick a statement before the order is marked as delivered.
+  Future<void> _confirmDelivered(BuildContext context, String nextStatus) async {
+    final bloc = context.read<CreatorBloc>();
+    final navigator = Navigator.of(context);
+    var confirmed = false;
+    var showError = false;
+
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFFFAF6EE),
+          scrollable: true,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text(
+            'Confirm delivery',
+            style: TextStyle(color: Color(0xFF8B261D)),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Only mark this order as delivered once the buyer has received it. This cannot be undone.',
+                style: TextStyle(fontSize: 13),
+              ),
+              CheckboxListTile(
+                value: confirmed,
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                activeColor: const Color(0xFF8B261D),
+                title: const Text(
+                  'The buyer has received this order.',
+                  style: TextStyle(fontSize: 13),
+                ),
+                onChanged: (value) => setDialogState(() {
+                  confirmed = value ?? false;
+                  showError = false;
+                }),
+              ),
+              if (showError)
+                const Text(
+                  'Please confirm the statement above to continue.',
+                  style: TextStyle(fontSize: 12, color: Colors.red),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF8B261D),
+              ),
+              onPressed: () {
+                if (!confirmed) {
+                  setDialogState(() => showError = true);
+                  return;
+                }
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Mark delivered'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (proceed != true) return;
+    bloc.add(
+      CreatorUpdateOrderStatus(
+        orderId: order.id,
+        status: nextStatus,
+        consignmentNumber: order.consignmentNumber,
+        carrierName: order.carrierName,
+      ),
+    );
+    navigator.pop();
   }
 
   void _showConsignmentDialog(BuildContext context) {

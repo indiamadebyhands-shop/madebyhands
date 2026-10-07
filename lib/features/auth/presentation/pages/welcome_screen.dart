@@ -63,10 +63,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     context.read<AuthBloc>().add(AuthGoogleSignInRequested());
   }
 
-  void _handleTestBuyerLogin() {
-    context.read<AuthBloc>().add(AuthTestBuyerSignInRequested());
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -308,23 +304,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   style: TextStyle(color: AppColors.mutedText, fontSize: 13),
                 ),
               ),
-            // TEMPORARY, for the payment gateway's review: a guest buyer
-            // sign-in that skips Google and role selection.
-            if (kTestBuyerLoginEnabled) ...[
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: isLoading ? null : _handleTestBuyerLogin,
-                icon: const Icon(Icons.shopping_bag_outlined, size: 20),
-                label: const Text('Continue as test buyer'),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'For testing only. Opens the store as a guest buyer, with no '
-                'Google account needed.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.mutedText, fontSize: 11.5),
-              ),
-            ],
             const SizedBox(height: 16),
             Row(
               children: [

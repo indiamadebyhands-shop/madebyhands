@@ -1,6 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:madebyhands/core/constants/feature_flags.dart';
 import 'package:madebyhands/features/auth/domain/entities/user_entity.dart';
 import 'package:madebyhands/features/auth/domain/repositories/auth_repository.dart';
 
@@ -16,7 +15,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     : _authRepository = authRepository,
       super(AuthLoading()) {
     on<AuthGoogleSignInRequested>(_onGoogleSignInRequested);
-    on<AuthTestBuyerSignInRequested>(_onTestBuyerSignInRequested);
     on<AuthSignUpWithRoleRequested>(_onSignUpWithRoleRequested);
     on<AuthIsUserLoggedIn>(_onIsUserLoggedIn);
     on<AuthDeleteAccountRequested>(_onDeleteAccountRequested);
@@ -32,21 +30,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     final res = await _authRepository.signInWithGoogle();
-    res.fold(
-      (failure) => emit(AuthFailure(failure.message, canRetrySession: false)),
-      (user) => emit(_stateFor(user)),
-    );
-  }
-
-  Future<void> _onTestBuyerSignInRequested(
-    AuthTestBuyerSignInRequested event,
-    Emitter<AuthState> emit,
-  ) async {
-    // The flag is checked here as well as in the UI, so the event does
-    // nothing once the test sign-in is switched off.
-    if (!kTestBuyerLoginEnabled) return;
-    emit(AuthLoading());
-    final res = await _authRepository.signInAsTestBuyer();
     res.fold(
       (failure) => emit(AuthFailure(failure.message, canRetrySession: false)),
       (user) => emit(_stateFor(user)),

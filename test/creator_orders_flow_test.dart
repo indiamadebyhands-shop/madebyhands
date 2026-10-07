@@ -127,7 +127,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.updates, hasLength(1));
-    expect(repository.updates.single.status, 'delivered');
+    expect(repository.updates.single.status, 'Delivered');
     expect(tester.takeException(), isNull);
   });
 
