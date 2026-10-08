@@ -36,7 +36,7 @@ Toolchain notes:
 - `flutter analyze` runs an implicit pub step that may rewrite `analysis_options.yaml` (adding an `analyzer.exclude` block) and `pubspec.lock`. Check `git status` afterwards and revert if you did not intend those changes.
 - `lib/firebase_options.dart`, `android/app/google-services.json`, and the iOS/macOS plist equivalents are **gitignored**. A fresh clone will not compile until `flutterfire configure` is run against Firebase project `madebyhands-77f87`.
 - `extract.ps1`, `extract_schema.ps1`, `generate_launcher_icons.ps1` and the `*_extracted.txt` files are one-off PowerShell helpers with hardcoded absolute paths. They are not part of any build.
-- Android `applicationId` is still `com.example.madebyhands`.
+- Android `applicationId` is `shop.madebyhands.app` (iOS bundle ID still `com.example.madebyhands`, pending).
 
 ## Client architecture
 

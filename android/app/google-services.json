@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "745060405583",
+    "firebase_url": "https://madebyhands-77f87-default-rtdb.firebaseio.com",
     "project_id": "madebyhands-77f87",
     "storage_bucket": "madebyhands-77f87.firebasestorage.app"
   },
@@ -12,7 +13,36 @@
           "package_name": "com.example.madebyhands"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "745060405583-bk06bjv67tje7f55dmus7j19u10c451i.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.madebyhands",
+            "certificate_hash": "052f9cfa66a508ea2448b60f65833d447e8a6800"
+          }
+        },
+        {
+          "client_id": "745060405583-ftd8doppj8jtgrbr2q7n29o9cp0d91dq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.madebyhands",
+            "certificate_hash": "2f28309a215b471263b8c27b14eec9180b558c77"
+          }
+        },
+        {
+          "client_id": "745060405583-u2rhr962bkr50pukubdjm1sj1b72aonf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.madebyhands",
+            "certificate_hash": "214befb3bea9208d8766a8e4c939891b2a7584b1"
+          }
+        },
+        {
+          "client_id": "745060405583-3j3p7s0bk4t6g73292un6jtfq15tvh80.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBtXLSd4e2cuf26PjLQ2KsUUsT6KHnt16g"
@@ -20,7 +50,79 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "745060405583-3j3p7s0bk4t6g73292un6jtfq15tvh80.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "745060405583-32mj57h22mmedq20j22ne224g8ldb8p7.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.madebyhands"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:745060405583:android:fb81dfd4e100c30576353a",
+        "android_client_info": {
+          "package_name": "shop.madebyhands.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "745060405583-p9arjl2oippgr61ik61o0hl8gck59q2j.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "shop.madebyhands.app",
+            "certificate_hash": "214befb3bea9208d8766a8e4c939891b2a7584b1"
+          }
+        },
+        {
+          "client_id": "745060405583-sfde8mm5k25j95jr5ain3arogj5o1lpa.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "shop.madebyhands.app",
+            "certificate_hash": "052f9cfa66a508ea2448b60f65833d447e8a6800"
+          }
+        },
+        {
+          "client_id": "745060405583-u8qkd01d2aagm1ahij11lmgv3i2ip6qp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "shop.madebyhands.app",
+            "certificate_hash": "2f28309a215b471263b8c27b14eec9180b558c77"
+          }
+        },
+        {
+          "client_id": "745060405583-3j3p7s0bk4t6g73292un6jtfq15tvh80.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtXLSd4e2cuf26PjLQ2KsUUsT6KHnt16g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "745060405583-3j3p7s0bk4t6g73292un6jtfq15tvh80.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "745060405583-32mj57h22mmedq20j22ne224g8ldb8p7.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.madebyhands"
+              }
+            }
+          ]
         }
       }
     }
