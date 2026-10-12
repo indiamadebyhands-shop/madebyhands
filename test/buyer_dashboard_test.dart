@@ -137,6 +137,8 @@ void main() {
 
     expect(find.text('Add to cart'), findsOneWidget);
     expect(find.textContaining('Buy now'), findsOneWidget);
+    expect(find.byTooltip('Search products'), findsOneWidget);
+    expect(find.byTooltip('Open wishlist'), findsOneWidget);
     expect(find.byTooltip('Open cart'), findsOneWidget);
 
     await tester.tap(find.text('Add to cart'));

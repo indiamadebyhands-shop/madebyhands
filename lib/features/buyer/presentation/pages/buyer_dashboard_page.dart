@@ -196,6 +196,8 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
                   BuyerUpdateProductCustomization(product, selection),
                 ),
                 onOpenCart: _openCart,
+                onOpenWishlist: _openWishlist,
+                onOpenSearch: _openSearch,
                 onBuyNow: (selection) => _openBuyNow(
                   product,
                   state.cartQuantities[product.id] ?? 0,
@@ -293,6 +295,18 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
 
   void _openShop() {
     _navigationCubit.changePage(1);
+  }
+
+  void _openSearch() {
+    _shopCategory.value = null;
+    _shopSearch.value = null;
+    _navigationCubit.changePage(1);
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
+  void _openWishlist() {
+    _navigationCubit.changePage(2);
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   void _openCart() {
