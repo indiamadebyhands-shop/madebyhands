@@ -57,6 +57,9 @@ class FirestoreBuyerRepository implements BuyerRepository {
             portfolio: List<String>.from(
               data['portfolio'] as List? ?? const [],
             ),
+            exhibitionPictures: List<String>.from(
+              data['exhibitionPictures'] as List? ?? const [],
+            ),
             story: data['story'] as String? ?? '',
             isVerified: data['verificationStatus'] == 'Verified',
           );

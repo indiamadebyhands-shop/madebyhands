@@ -77,8 +77,10 @@ class _StorefrontBody extends StatelessWidget {
     return CustomScrollView(
       slivers: [
         SliverToBoxAdapter(child: _CreatorHeader(creator: creator)),
-        if (creator.portfolio.isNotEmpty)
-          SliverToBoxAdapter(child: _Portfolio(images: creator.portfolio)),
+        if (creator.exhibitionPictures.isNotEmpty)
+          SliverToBoxAdapter(
+            child: _ExhibitionGallery(images: creator.exhibitionPictures),
+          ),
         const SliverPadding(
           padding: EdgeInsets.fromLTRB(20, 22, 20, 0),
           sliver: SliverToBoxAdapter(child: Divider(height: 1)),
@@ -339,39 +341,50 @@ class _CreatorHeader extends StatelessWidget {
   }
 }
 
-class _Portfolio extends StatelessWidget {
+class _ExhibitionGallery extends StatelessWidget {
   final List<String> images;
 
-  const _Portfolio({required this.images});
+  const _ExhibitionGallery({required this.images});
 
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(top: 22),
-    child: SizedBox(
-      height: 150,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        scrollDirection: Axis.horizontal,
-        itemCount: images.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 10),
-        itemBuilder: (context, index) => ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: Image.network(
-            images[index],
-            width: 150,
-            height: 150,
-            cacheWidth: 450,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => const SizedBox(
-              width: 150,
-              child: ColoredBox(
-                color: BuyerColors.sand,
-                child: Icon(Icons.broken_image_outlined),
+    child: Column(
+      key: const Key('creator-exhibition-gallery'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20),
+          child: BuyerHeading('Exhibition showcase'),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 150,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            scrollDirection: Axis.horizontal,
+            itemCount: images.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            itemBuilder: (context, index) => ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.network(
+                images[index],
+                width: 150,
+                height: 150,
+                cacheWidth: 450,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const SizedBox(
+                  width: 150,
+                  child: ColoredBox(
+                    color: BuyerColors.sand,
+                    child: Icon(Icons.broken_image_outlined),
+                  ),
+                ),
               ),
             ),
           ),
         ),
-      ),
+      ],
     ),
   );
 }

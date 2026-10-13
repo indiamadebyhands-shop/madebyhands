@@ -16,6 +16,8 @@ class ProductDetailsPage extends StatefulWidget {
   final VoidCallback onSave;
   final ValueChanged<int> onCartQuantityChanged;
   final VoidCallback onOpenCart;
+  final VoidCallback? onOpenWishlist;
+  final VoidCallback? onOpenSearch;
   final ValueChanged<ProductCustomizationSelection> onBuyNow;
   final ProductCustomizationSelection customizationSelection;
   final ValueChanged<ProductCustomizationSelection> onCustomizationChanged;
@@ -33,6 +35,8 @@ class ProductDetailsPage extends StatefulWidget {
     required this.onSave,
     required this.onCartQuantityChanged,
     required this.onOpenCart,
+    this.onOpenWishlist,
+    this.onOpenSearch,
     required this.onBuyNow,
     this.customizationSelection = const ProductCustomizationSelection(),
     required this.onCustomizationChanged,
@@ -149,6 +153,18 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
         appBar: AppBar(
           title: const Text('Product details'),
           actions: [
+            if (widget.onOpenSearch != null)
+              IconButton(
+                tooltip: 'Search products',
+                onPressed: widget.onOpenSearch,
+                icon: const Icon(Icons.search_rounded),
+              ),
+            if (widget.onOpenWishlist != null)
+              IconButton(
+                tooltip: 'Open wishlist',
+                onPressed: widget.onOpenWishlist,
+                icon: const Icon(Icons.favorite_border_rounded),
+              ),
             IconButton(
               tooltip: 'Open cart',
               onPressed: widget.onOpenCart,
