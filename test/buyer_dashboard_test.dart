@@ -11,6 +11,7 @@ import 'package:madebyhands/features/buyer/data/mock_buyer_repository.dart';
 import 'package:madebyhands/features/buyer/data/mock_products.dart';
 import 'package:madebyhands/features/buyer/domain/entities/buyer_product_notification.dart';
 import 'package:madebyhands/features/buyer/domain/entities/product.dart';
+import 'package:madebyhands/features/buyer/domain/entities/public_creator.dart';
 import 'package:madebyhands/features/buyer/presentation/bloc/buyer_bloc.dart';
 import 'package:madebyhands/features/buyer/presentation/pages/buyer_dashboard_page.dart';
 import 'package:madebyhands/features/buyer/presentation/pages/buyer_account_page.dart';
@@ -456,7 +457,21 @@ void main() {
   testWidgets('buyer opens a creator profile and complete storefront', (
     tester,
   ) async {
-    await tester.pumpWidget(buildDashboard());
+    final repository = MockBuyerRepository(
+      publicCreators: const [
+        PublicCreator(
+          uid: 'creator-asha',
+          name: 'Asha Weaves',
+          businessName: 'Asha Weaves',
+          bio: 'Handwoven homeware made with natural fibres.',
+          location: 'Jaipur, Rajasthan',
+          story: 'A family weaving practice carried forward by local artisans.',
+          exhibitionPictures: ['https://example.com/exhibition.jpg'],
+          isVerified: true,
+        ),
+      ],
+    );
+    await tester.pumpWidget(buildDashboard(repository: repository));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Shop').last);
@@ -470,6 +485,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Creator story'), findsOneWidget);
+    expect(find.text('Exhibition showcase'), findsOneWidget);
+    expect(
+      find.byKey(const Key('creator-exhibition-gallery')),
+      findsOneWidget,
+    );
     expect(find.text('Storefront · 1 product'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Handwoven Storage Basket'),

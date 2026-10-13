@@ -7,6 +7,7 @@ class PublicCreator {
   final String location;
   final List<String> socialLinks;
   final List<String> portfolio;
+  final List<String> exhibitionPictures;
   final String story;
   final bool isVerified;
 
@@ -19,6 +20,7 @@ class PublicCreator {
     this.location = '',
     this.socialLinks = const [],
     this.portfolio = const [],
+    this.exhibitionPictures = const [],
     this.story = '',
     this.isVerified = false,
   });

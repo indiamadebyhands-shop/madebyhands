@@ -14,8 +14,12 @@ import 'package:madebyhands/features/orders/domain/order_status.dart';
 
 class MockBuyerRepository implements BuyerRepository {
   final List<BuyerProductNotification> productNotifications;
+  final List<PublicCreator>? publicCreators;
 
-  MockBuyerRepository({this.productNotifications = const []});
+  MockBuyerRepository({
+    this.productNotifications = const [],
+    this.publicCreators,
+  });
 
   final Set<String> _favorites = {};
   final List<SavedAddress> _addresses = [
@@ -89,23 +93,27 @@ class MockBuyerRepository implements BuyerRepository {
       Stream.value(List<String>.of(kProductCategories));
 
   @override
-  Stream<List<PublicCreator>> watchPublicCreators() => Stream.value(const [
-    PublicCreator(
-      uid: 'creator-asha',
-      name: 'Asha Weaves',
-      businessName: 'Asha Weaves',
-      bio: 'Handwoven homeware made with natural fibres.',
-      location: 'Jaipur, Rajasthan',
-      story: 'A family weaving practice carried forward by local artisans.',
-      isVerified: true,
-    ),
-    PublicCreator(
-      uid: 'creator-jaipur-clay',
-      name: 'Jaipur Clay Studio',
-      location: 'Jaipur, Rajasthan',
-      isVerified: true,
-    ),
-  ]);
+  Stream<List<PublicCreator>> watchPublicCreators() => Stream.value(
+    publicCreators ??
+        const [
+          PublicCreator(
+            uid: 'creator-asha',
+            name: 'Asha Weaves',
+            businessName: 'Asha Weaves',
+            bio: 'Handwoven homeware made with natural fibres.',
+            location: 'Jaipur, Rajasthan',
+            story:
+                'A family weaving practice carried forward by local artisans.',
+            isVerified: true,
+          ),
+          PublicCreator(
+            uid: 'creator-jaipur-clay',
+            name: 'Jaipur Clay Studio',
+            location: 'Jaipur, Rajasthan',
+            isVerified: true,
+          ),
+        ],
+  );
 
   @override
   Stream<Set<String>> watchFavoriteProductIds(String userId) async* {
