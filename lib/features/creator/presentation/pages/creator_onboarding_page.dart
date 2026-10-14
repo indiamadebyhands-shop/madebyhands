@@ -172,37 +172,6 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
     }
   }
 
-  Future<void> _replaceExistingExhibitionPicture(int index) async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: kImageQuality,
-      maxWidth: kProfileImageMaxSide,
-      maxHeight: kProfileImageMaxSide,
-    );
-    if (pickedFile != null) {
-      setState(() {
-        _existingExhibitionPictureUrls.removeAt(index);
-        _exhibitionImages.add(File(pickedFile.path));
-      });
-    }
-  }
-
-  Future<void> _replaceExhibitionImageFile(int index) async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: kImageQuality,
-      maxWidth: kProfileImageMaxSide,
-      maxHeight: kProfileImageMaxSide,
-    );
-    if (pickedFile != null) {
-      setState(() {
-        _exhibitionImages[index] = File(pickedFile.path);
-      });
-    }
-  }
-
   static final RegExp _domainPattern = RegExp(
     r'^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)+$',
   );
@@ -277,24 +246,101 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
     return null;
   }
 
-  Widget _buildFileImageWidget(File file, {required double width, required double height}) {
+  Widget _buildFileImageWidget(
+    File file, {
+    required double width,
+    required double height,
+    BoxFit fit = BoxFit.cover,
+  }) {
     if (kIsWeb) {
       return Image.network(
         file.path,
         width: width,
         height: height,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, color: Colors.grey),
+        fit: fit,
+        errorBuilder: (context, error, stackTrace) =>
+            const Icon(Icons.broken_image, color: Colors.grey),
       );
     } else {
       return Image.file(
         file,
         width: width,
         height: height,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, color: Colors.grey),
+        fit: fit,
+        errorBuilder: (context, error, stackTrace) =>
+            const Icon(Icons.broken_image, color: Colors.grey),
       );
     }
+  }
+
+  void _showImagePreviewDialog({
+    String? imageUrl,
+    File? imageFile,
+    required String title,
+  }) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return Dialog(
+          backgroundColor: Colors.black.withOpacity(0.9),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.pop(dialogCtx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.65,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: imageUrl != null
+                        ? Image.network(
+                            imageUrl,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => const Icon(
+                              Icons.broken_image,
+                              color: Colors.white,
+                              size: 64,
+                            ),
+                          )
+                        : imageFile != null
+                            ? _buildFileImageWidget(
+                                imageFile,
+                                width: double.infinity,
+                                height: double.infinity,
+                                fit: BoxFit.contain,
+                              )
+                            : const SizedBox.shrink(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -420,11 +466,33 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
         Center(
           child: Stack(
             children: [
-              CircleAvatar(
-                radius: 60,
-                backgroundColor: const Color(0xFF8B261D).withValues(alpha: 0.1),
-                backgroundImage: _getProfileImageProvider(),
-                child: !hasImage ? const Icon(Icons.person, size: 60, color: Color(0xFF8B261D)) : null,
+              GestureDetector(
+                onTap: hasImage
+                    ? () {
+                        if (_profileImage != null) {
+                          _showImagePreviewDialog(
+                            imageFile: _profileImage,
+                            title: 'Profile Picture',
+                          );
+                        } else if (widget.existingProfile != null &&
+                            widget.existingProfile!.profileImage.isNotEmpty) {
+                          _showImagePreviewDialog(
+                            imageUrl: widget.existingProfile!.profileImage,
+                            title: 'Profile Picture',
+                          );
+                        }
+                      }
+                    : _pickProfileImage,
+                child: CircleAvatar(
+                  radius: 60,
+                  backgroundColor:
+                      const Color(0xFF8B261D).withValues(alpha: 0.1),
+                  backgroundImage: _getProfileImageProvider(),
+                  child: !hasImage
+                      ? const Icon(Icons.person,
+                          size: 60, color: Color(0xFF8B261D))
+                      : null,
+                ),
               ),
               Positioned(
                 bottom: 0,
@@ -467,7 +535,7 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
         ),
         const SizedBox(height: 20),
         DropdownButtonFormField<String>(
-          value: _selectedState,
+          initialValue: _selectedState,
           isExpanded: true,
           decoration: const InputDecoration(
             labelText: 'State / Union Territory *',
@@ -589,19 +657,25 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
       padding: const EdgeInsets.only(left: 12.0),
       child: Stack(
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: Image.network(
-              url,
-              width: 120,
-              height: 120,
-              fit: BoxFit.cover,
-              cacheWidth: 360,
-              errorBuilder: (_, _, _) => Container(
+          GestureDetector(
+            onTap: () => _showImagePreviewDialog(
+              imageUrl: url,
+              title: 'Exhibition Picture ${index + 1}',
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: Image.network(
+                url,
                 width: 120,
                 height: 120,
-                color: const Color(0xFFEAE7DC),
-                child: const Icon(Icons.broken_image, color: Colors.grey),
+                fit: BoxFit.cover,
+                cacheWidth: 360,
+                errorBuilder: (_, _, _) => Container(
+                  width: 120,
+                  height: 120,
+                  color: const Color(0xFFEAE7DC),
+                  child: const Icon(Icons.broken_image, color: Colors.grey),
+                ),
               ),
             ),
           ),
@@ -619,18 +693,6 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
               ),
             ),
           ),
-          Positioned(
-            bottom: 5,
-            right: 5,
-            child: GestureDetector(
-              onTap: () => _replaceExistingExhibitionPicture(index),
-              child: const CircleAvatar(
-                radius: 12,
-                backgroundColor: Color(0xFF8B261D),
-                child: Icon(Icons.edit, size: 14, color: Colors.white),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -641,9 +703,15 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
       padding: const EdgeInsets.only(left: 12.0),
       child: Stack(
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: _buildFileImageWidget(file, width: 120, height: 120),
+          GestureDetector(
+            onTap: () => _showImagePreviewDialog(
+              imageFile: file,
+              title: 'Exhibition Picture ${index + 1}',
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: _buildFileImageWidget(file, width: 120, height: 120),
+            ),
           ),
           Positioned(
             top: 5,
@@ -654,18 +722,6 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
                 radius: 12,
                 backgroundColor: Colors.red,
                 child: Icon(Icons.close, size: 16, color: Colors.white),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 5,
-            right: 5,
-            child: GestureDetector(
-              onTap: () => _replaceExhibitionImageFile(index),
-              child: const CircleAvatar(
-                radius: 12,
-                backgroundColor: Color(0xFF8B261D),
-                child: Icon(Icons.edit, size: 14, color: Colors.white),
               ),
             ),
           ),
@@ -767,19 +823,25 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 12.0),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: Image.network(
-              url,
-              width: 120,
-              height: 120,
-              fit: BoxFit.cover,
-              cacheWidth: 360,
-              errorBuilder: (_, _, _) => Container(
+          child: GestureDetector(
+            onTap: () => _showImagePreviewDialog(
+              imageUrl: url,
+              title: 'Portfolio Picture ${index + 1}',
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: Image.network(
+                url,
                 width: 120,
                 height: 120,
-                color: const Color(0xFFEAE7DC),
-                child: const Icon(Icons.broken_image, color: Colors.grey),
+                fit: BoxFit.cover,
+                cacheWidth: 360,
+                errorBuilder: (_, _, _) => Container(
+                  width: 120,
+                  height: 120,
+                  color: const Color(0xFFEAE7DC),
+                  child: const Icon(Icons.broken_image, color: Colors.grey),
+                ),
               ),
             ),
           ),
@@ -805,9 +867,15 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 12.0),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: _buildFileImageWidget(file, width: 120, height: 120),
+          child: GestureDetector(
+            onTap: () => _showImagePreviewDialog(
+              imageFile: file,
+              title: 'Portfolio Picture ${index + 1}',
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: _buildFileImageWidget(file, width: 120, height: 120),
+            ),
           ),
         ),
         Positioned(
