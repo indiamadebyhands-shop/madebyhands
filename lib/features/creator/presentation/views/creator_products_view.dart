@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:madebyhands/core/error/failures.dart';
 import 'package:madebyhands/core/theme/app_theme.dart';
 import 'package:madebyhands/features/creator/domain/entities/creator_product.dart';
@@ -278,6 +279,34 @@ class _ProductTile extends StatelessWidget {
     ),
   );
 
+  Future<void> _shareProduct(BuildContext context) async {
+    final productLink = Uri.https('www.madebyhands.shop', '/', {
+      'product': product.id,
+    });
+    final renderBox = context.findRenderObject() as RenderBox?;
+
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          title: product.name,
+          subject: 'Check out ${product.name} on MadeByHands',
+          text:
+              'Check out ${product.name} by ${product.creatorName} on '
+              'MadeByHands: $productLink',
+          sharePositionOrigin: renderBox == null
+              ? null
+              : renderBox.localToGlobal(Offset.zero) & renderBox.size,
+        ),
+      );
+    } catch (_) {
+      await Clipboard.setData(ClipboardData(text: productLink.toString()));
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Product link copied to clipboard')),
+      );
+    }
+  }
+
   Future<void> _confirmDelete(BuildContext context) async {
     final bloc = context.read<CreatorBloc>();
     final confirmed = await showDialog<bool>(
@@ -471,6 +500,8 @@ class _ProductTile extends StatelessWidget {
                       bloc.add(CreatorSetProductPublished(productId: product.id, published: true));
                     case 'unpublish':
                       bloc.add(CreatorSetProductPublished(productId: product.id, published: false));
+                    case 'share':
+                      _shareProduct(context);
                     case 'delete':
                       _confirmDelete(context);
                   }
@@ -485,6 +516,8 @@ class _ProductTile extends StatelessWidget {
                     const PopupMenuItem(value: 'publish', child: Text('Publish')),
                   if (product.isApproved && product.isActive)
                     const PopupMenuItem(value: 'unpublish', child: Text('Unpublish')),
+                  if (product.isApproved)
+                    const PopupMenuItem(value: 'share', child: Text('Share')),
                   const PopupMenuItem(
                     value: 'delete',
                     child: Text('Delete', style: TextStyle(color: Colors.red)),
