@@ -603,18 +603,25 @@ class _AddProductPageState extends State<AddProductPage> {
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 12.0),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: Image.network(
-              url,
-              width: 120,
-              height: 120,
-              fit: BoxFit.cover,
-              cacheWidth: 360,
-              errorBuilder: (_, _, _) => const SizedBox(
+          child: GestureDetector(
+            onTap: () => _showProductImagePreviewDialog(
+              context,
+              imageUrl: url,
+              title: 'Product Photo ${index + 1}',
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: Image.network(
+                url,
                 width: 120,
                 height: 120,
-                child: Icon(Icons.broken_image, color: Colors.grey),
+                fit: BoxFit.cover,
+                cacheWidth: 360,
+                errorBuilder: (_, _, _) => const SizedBox(
+                  width: 120,
+                  height: 120,
+                  child: Icon(Icons.broken_image, color: Colors.grey),
+                ),
               ),
             ),
           ),
@@ -659,29 +666,36 @@ class _AddProductPageState extends State<AddProductPage> {
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 12.0),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: kIsWeb
-                ? Image.network(
-                    file.path,
-                    width: 120,
-                    height: 120,
-                    fit: BoxFit.cover,
-                    errorBuilder: (c, e, s) => const Icon(
-                      Icons.broken_image,
-                      color: Colors.grey,
+          child: GestureDetector(
+            onTap: () => _showProductImagePreviewDialog(
+              context,
+              imageFile: file,
+              title: 'Product Photo ${index + 1}',
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: kIsWeb
+                  ? Image.network(
+                      file.path,
+                      width: 120,
+                      height: 120,
+                      fit: BoxFit.cover,
+                      errorBuilder: (c, e, s) => const Icon(
+                        Icons.broken_image,
+                        color: Colors.grey,
+                      ),
+                    )
+                  : Image.file(
+                      file,
+                      width: 120,
+                      height: 120,
+                      fit: BoxFit.cover,
+                      errorBuilder: (c, e, s) => const Icon(
+                        Icons.broken_image,
+                        color: Colors.grey,
+                      ),
                     ),
-                  )
-                : Image.file(
-                    file,
-                    width: 120,
-                    height: 120,
-                    fit: BoxFit.cover,
-                    errorBuilder: (c, e, s) => const Icon(
-                      Icons.broken_image,
-                      color: Colors.grey,
-                    ),
-                  ),
+            ),
           ),
         ),
         Positioned(
@@ -1566,18 +1580,25 @@ class _CustomizationBlockState extends State<_CustomizationBlock> {
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 8.0),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Image.network(
-              url,
-              width: 80,
-              height: 80,
-              fit: BoxFit.cover,
-              cacheWidth: 240,
-              errorBuilder: (_, _, _) => const SizedBox(
+          child: GestureDetector(
+            onTap: () => _showProductImagePreviewDialog(
+              context,
+              imageUrl: url,
+              title: 'Customization Image ${index + 1}',
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.network(
+                url,
                 width: 80,
                 height: 80,
-                child: Icon(Icons.broken_image, color: Colors.grey),
+                fit: BoxFit.cover,
+                cacheWidth: 240,
+                errorBuilder: (_, _, _) => const SizedBox(
+                  width: 80,
+                  height: 80,
+                  child: Icon(Icons.broken_image, color: Colors.grey),
+                ),
               ),
             ),
           ),
@@ -1605,29 +1626,36 @@ class _CustomizationBlockState extends State<_CustomizationBlock> {
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 8.0),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: kIsWeb
-                ? Image.network(
-                    file.path,
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.cover,
-                    errorBuilder: (c, e, s) => const Icon(
-                      Icons.broken_image,
-                      color: Colors.grey,
+          child: GestureDetector(
+            onTap: () => _showProductImagePreviewDialog(
+              context,
+              imageFile: file,
+              title: 'Customization Image ${index + 1}',
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: kIsWeb
+                  ? Image.network(
+                      file.path,
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      errorBuilder: (c, e, s) => const Icon(
+                        Icons.broken_image,
+                        color: Colors.grey,
+                      ),
+                    )
+                  : Image.file(
+                      file,
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      errorBuilder: (c, e, s) => const Icon(
+                        Icons.broken_image,
+                        color: Colors.grey,
+                      ),
                     ),
-                  )
-                : Image.file(
-                    file,
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.cover,
-                    errorBuilder: (c, e, s) => const Icon(
-                      Icons.broken_image,
-                      color: Colors.grey,
-                    ),
-                  ),
+            ),
           ),
         ),
         Positioned(
@@ -1670,4 +1698,88 @@ class _CustomizationControllers {
       o.dispose();
     }
   }
+}
+
+void _showProductImagePreviewDialog(
+  BuildContext context, {
+  String? imageUrl,
+  File? imageFile,
+  required String title,
+}) {
+  showDialog(
+    context: context,
+    builder: (dialogCtx) {
+      return Dialog(
+        backgroundColor: Colors.black.withOpacity(0.9),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(dialogCtx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.65,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: imageUrl != null
+                      ? Image.network(
+                          imageUrl,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const Icon(
+                            Icons.broken_image,
+                            color: Colors.white,
+                            size: 64,
+                          ),
+                        )
+                      : imageFile != null
+                          ? (kIsWeb
+                              ? Image.network(
+                                  imageFile.path,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => const Icon(
+                                    Icons.broken_image,
+                                    color: Colors.white,
+                                    size: 64,
+                                  ),
+                                )
+                              : Image.file(
+                                  imageFile,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => const Icon(
+                                    Icons.broken_image,
+                                    color: Colors.white,
+                                    size: 64,
+                                  ),
+                                ))
+                          : const SizedBox.shrink(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }
