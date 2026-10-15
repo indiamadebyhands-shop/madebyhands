@@ -298,10 +298,25 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
   }
 
   void _openSearch() {
-    _shopCategory.value = null;
-    _shopSearch.value = null;
-    _navigationCubit.changePage(1);
-    Navigator.of(context).popUntil((route) => route.isFirst);
+    final buyerBloc = context.read<BuyerBloc>();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BlocProvider.value(
+          value: buyerBloc,
+          child: BuyerBackground(
+            child: Scaffold(
+              appBar: AppBar(title: const Text('Search shop')),
+              body: SearchTab(
+                userId: _currentUser.uid,
+                onProductTap: _openProduct,
+                onCreatorTap: _openCreator,
+                autofocusSearch: true,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _openWishlist() {

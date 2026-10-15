@@ -142,6 +142,20 @@ void main() {
     expect(find.byTooltip('Open wishlist'), findsOneWidget);
     expect(find.byTooltip('Open cart'), findsOneWidget);
 
+    await tester.tap(find.byTooltip('Search products'));
+    await tester.pumpAndSettle();
+    expect(find.text('Explore handmade'), findsOneWidget);
+    expect(find.byTooltip('Back'), findsOneWidget);
+    expect(tester.testTextInput.isVisible, isTrue);
+
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    expect(find.text('Product details'), findsOneWidget);
+    final returnedProductDetails = tester.widget<ProductDetailsPage>(
+      find.byType(ProductDetailsPage),
+    );
+    expect(returnedProductDetails.product.id, 'blue-pottery');
+
     await tester.tap(find.text('Add to cart'));
     await tester.pumpAndSettle();
     expect(find.text('1'), findsNWidgets(2));
@@ -486,10 +500,7 @@ void main() {
 
     expect(find.text('Creator story'), findsOneWidget);
     expect(find.text('Exhibition showcase'), findsOneWidget);
-    expect(
-      find.byKey(const Key('creator-exhibition-gallery')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const Key('creator-exhibition-gallery')), findsOneWidget);
     expect(find.text('Storefront · 1 product'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Handwoven Storage Basket'),

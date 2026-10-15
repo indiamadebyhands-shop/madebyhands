@@ -24,6 +24,9 @@ class SearchTab extends StatefulWidget {
   /// Query submitted from another tab, such as the Home search field.
   final ValueNotifier<String?>? searchRequest;
 
+  /// Used when Shop search is opened as a focused route from product details.
+  final bool autofocusSearch;
+
   const SearchTab({
     super.key,
     required this.userId,
@@ -31,6 +34,7 @@ class SearchTab extends StatefulWidget {
     this.onCreatorTap,
     this.categoryRequest,
     this.searchRequest,
+    this.autofocusSearch = false,
   });
 
   @override
@@ -303,6 +307,7 @@ class _SearchTabState extends State<SearchTab> {
                     const SizedBox(height: 14),
                     TextField(
                       controller: _searchController,
+                      autofocus: widget.autofocusSearch,
                       onChanged: (value) => setState(() => _query = value),
                       textInputAction: TextInputAction.search,
                       decoration: const InputDecoration(
