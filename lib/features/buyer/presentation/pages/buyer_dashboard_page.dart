@@ -195,8 +195,8 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
                 onCustomizationChanged: (selection) => buyerBloc.add(
                   BuyerUpdateProductCustomization(product, selection),
                 ),
-                onOpenCart: _openCart,
-                onOpenWishlist: _openWishlist,
+                onOpenCart: _openProductCart,
+                onOpenWishlist: _openProductWishlist,
                 onOpenSearch: _openSearch,
                 onBuyNow: (selection) => _openBuyNow(
                   product,
@@ -319,14 +319,57 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
     );
   }
 
-  void _openWishlist() {
-    _navigationCubit.changePage(2);
-    Navigator.of(context).popUntil((route) => route.isFirst);
-  }
-
   void _openCart() {
     _navigationCubit.changePage(3);
     Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
+  void _openProductWishlist() {
+    final buyerBloc = context.read<BuyerBloc>();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BlocProvider.value(
+          value: buyerBloc,
+          child: BuyerBackground(
+            child: Scaffold(
+              appBar: AppBar(title: const Text('Wishlist')),
+              body: SavedTab(
+                userId: _currentUser.uid,
+                onProductTap: _openProduct,
+                onBrowse: () {
+                  Navigator.of(context).pop();
+                  _openSearch();
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openProductCart() {
+    final buyerBloc = context.read<BuyerBloc>();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BlocProvider.value(
+          value: buyerBloc,
+          child: BuyerBackground(
+            child: Scaffold(
+              appBar: AppBar(title: const Text('Cart')),
+              body: CartTab(
+                onBrowse: () {
+                  Navigator.of(context).pop();
+                  _openSearch();
+                },
+                onCheckout: _openCheckout,
+                onProductTap: _openProduct,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _openShopSearch(String query) {

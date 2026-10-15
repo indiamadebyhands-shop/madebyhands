@@ -156,6 +156,22 @@ void main() {
     );
     expect(returnedProductDetails.product.id, 'blue-pottery');
 
+    await tester.tap(find.byTooltip('Open wishlist'));
+    await tester.pumpAndSettle();
+    expect(find.text('Saved pieces'), findsOneWidget);
+    expect(find.byTooltip('Back'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    expect(find.text('Product details'), findsOneWidget);
+    expect(
+      tester
+          .widget<ProductDetailsPage>(find.byType(ProductDetailsPage))
+          .product
+          .id,
+      'blue-pottery',
+    );
+
     await tester.tap(find.text('Add to cart'));
     await tester.pumpAndSettle();
     expect(find.text('1'), findsNWidgets(2));
@@ -171,6 +187,18 @@ void main() {
     expect(find.text('Your cart'), findsOneWidget);
     expect(find.text('Blue Pottery Vase'), findsOneWidget);
     expect(find.text('2'), findsWidgets);
+    expect(find.byTooltip('Back'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    expect(find.text('Product details'), findsOneWidget);
+    expect(
+      tester
+          .widget<ProductDetailsPage>(find.byType(ProductDetailsPage))
+          .product
+          .id,
+      'blue-pottery',
+    );
   });
 
   testWidgets('buyer receives and opens a matching new-product notification', (
