@@ -658,7 +658,8 @@ class _HomeTabState extends State<HomeTab> {
       buildWhen: (previous, current) =>
           previous.categories != current.categories ||
           previous.products != current.products ||
-          previous.favoriteIds != current.favoriteIds,
+          previous.favoriteIds != current.favoriteIds ||
+          previous.pendingFavoriteIds != current.pendingFavoriteIds,
       builder: (context, state) {
         final sections = <({String category, List<Product> products})>[];
         for (final category in _homeCategoryOrder) {
@@ -736,6 +737,9 @@ class _HomeTabState extends State<HomeTab> {
                           child: ProductCard(
                             product: product,
                             isSaved: state.favoriteIds.contains(product.id),
+                            isUpdating: state.pendingFavoriteIds.contains(
+                              product.id,
+                            ),
                             onTap: () => widget.onProductTap(product),
                             onSave: () => context.read<BuyerBloc>().add(
                               BuyerToggleFavorite(

@@ -11,8 +11,10 @@ import 'package:share_plus/share_plus.dart';
 class ProductDetailsPage extends StatefulWidget {
   final Product product;
   final bool isSaved;
+  final bool isFavoriteUpdating;
   final int cartQuantity;
   final int cartCount;
+  final bool isCartUpdating;
   final VoidCallback onSave;
   final ValueChanged<int> onCartQuantityChanged;
   final VoidCallback onOpenCart;
@@ -30,8 +32,10 @@ class ProductDetailsPage extends StatefulWidget {
     super.key,
     required this.product,
     required this.isSaved,
+    this.isFavoriteUpdating = false,
     required this.cartQuantity,
     required this.cartCount,
+    this.isCartUpdating = false,
     required this.onSave,
     required this.onCartQuantityChanged,
     required this.onOpenCart,
@@ -205,13 +209,24 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                       IconButton(
                         tooltip: _isSaved ? 'Remove from saved' : 'Save item',
                         visualDensity: VisualDensity.compact,
-                        onPressed: () {
-                          widget.onSave();
-                          setState(() => _isSaved = !_isSaved);
-                        },
-                        icon: Icon(
-                          _isSaved ? Icons.favorite : Icons.favorite_border,
-                        ),
+                        onPressed: widget.isFavoriteUpdating
+                            ? null
+                            : () {
+                                widget.onSave();
+                                setState(() => _isSaved = !_isSaved);
+                              },
+                        icon: widget.isFavoriteUpdating
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Icon(
+                                _isSaved
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                              ),
                         color: BuyerColors.maroon,
                       ),
                       Builder(
@@ -399,18 +414,29 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                         )
                       : widget.cartQuantity == 0
                       ? OutlinedButton.icon(
-                          onPressed: () {
-                            widget.onCartQuantityChanged(1);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('${product.name} added to cart'),
-                              ),
-                            );
-                          },
+                          onPressed: widget.isCartUpdating
+                              ? null
+                              : () {
+                                  widget.onCartQuantityChanged(1);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        '${product.name} added to cart',
+                                      ),
+                                    ),
+                                  );
+                                },
                           style: OutlinedButton.styleFrom(
                             padding: _barButtonPadding,
                           ),
-                          icon: const Icon(Icons.add_shopping_cart, size: 18),
+                          icon: widget.isCartUpdating
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.add_shopping_cart, size: 18),
                           label: const _ButtonLabel('Add to cart'),
                         )
                       : Container(
@@ -428,22 +454,33 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                             children: [
                               IconButton(
                                 tooltip: 'Decrease quantity',
-                                onPressed: () => widget.onCartQuantityChanged(
-                                  widget.cartQuantity - 1,
-                                ),
+                                onPressed: widget.isCartUpdating
+                                    ? null
+                                    : () => widget.onCartQuantityChanged(
+                                        widget.cartQuantity - 1,
+                                      ),
                                 icon: const Icon(Icons.remove, size: 20),
                               ),
-                              Text(
-                                '${widget.cartQuantity}',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  color: BuyerColors.maroon,
-                                ),
-                              ),
+                              widget.isCartUpdating
+                                  ? const SizedBox.square(
+                                      dimension: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : Text(
+                                      '${widget.cartQuantity}',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: BuyerColors.maroon,
+                                      ),
+                                    ),
                               IconButton(
                                 tooltip: 'Increase quantity',
-                                onPressed: widget.cartQuantity >= product.stock
+                                onPressed:
+                                    widget.isCartUpdating ||
+                                        widget.cartQuantity >= product.stock
                                     ? null
                                     : () => widget.onCartQuantityChanged(
                                         widget.cartQuantity + 1,

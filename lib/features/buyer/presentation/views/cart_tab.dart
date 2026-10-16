@@ -27,7 +27,9 @@ class CartTab extends StatelessWidget {
         buildWhen: (previous, current) =>
             previous.products != current.products ||
             previous.cartQuantities != current.cartQuantities ||
-            previous.cartCustomizations != current.cartCustomizations,
+            previous.cartCustomizations != current.cartCustomizations ||
+            previous.pendingCartProductIds != current.pendingCartProductIds ||
+            previous.isLoadingCart != current.isLoadingCart,
         builder: (context, state) {
           final productsInCart = state.products
               .where((product) => state.cartQuantities.containsKey(product.id))
@@ -49,6 +51,8 @@ class CartTab extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (state.isLoadingCart)
+                const LinearProgressIndicator(minHeight: 2),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
                 child: BuyerPageHeader(
@@ -82,6 +86,9 @@ class CartTab extends StatelessWidget {
                             product: product,
                             quantity: quantity,
                             customization: customization,
+                            isUpdating: state.pendingCartProductIds.contains(
+                              product.id,
+                            ),
                             onTap: onProductTap == null
                                 ? null
                                 : () => onProductTap!(product),
@@ -150,20 +157,49 @@ class _CartItemCard extends StatelessWidget {
   final Product product;
   final int quantity;
   final ProductCustomizationSelection customization;
+  final bool isUpdating;
   final VoidCallback? onTap;
 
   const _CartItemCard({
     required this.product,
     required this.quantity,
     required this.customization,
+    required this.isUpdating,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final unitPrice = customization.unitPriceFor(product);
-    void setQuantity(int value) =>
-        context.read<BuyerBloc>().add(BuyerUpdateCartQuantity(product, value));
+    void setQuantity(int value) {
+      if (isUpdating) return;
+      final bloc = context.read<BuyerBloc>();
+      bloc.add(BuyerUpdateCartQuantity(product, value));
+      if (value > 0) return;
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('${product.name} removed from cart'),
+            action: SnackBarAction(
+              label: 'Undo',
+              onPressed: () async {
+                while (bloc.state.pendingCartProductIds.contains(product.id)) {
+                  await Future<void>.delayed(const Duration(milliseconds: 40));
+                }
+                if (bloc.isClosed) return;
+                bloc.add(BuyerUpdateCartQuantity(product, quantity));
+                if (!customization.isEmpty) {
+                  bloc.add(
+                    BuyerUpdateProductCustomization(product, customization),
+                  );
+                }
+              },
+            ),
+          ),
+        );
+    }
 
     return Card(
       child: InkWell(
@@ -218,8 +254,11 @@ class _CartItemCard extends StatelessWidget {
                         ),
                         _QuantityStepper(
                           quantity: quantity,
-                          onDecrease: () => setQuantity(quantity - 1),
-                          onIncrease: quantity >= product.stock
+                          isUpdating: isUpdating,
+                          onDecrease: isUpdating
+                              ? null
+                              : () => setQuantity(quantity - 1),
+                          onIncrease: isUpdating || quantity >= product.stock
                               ? null
                               : () => setQuantity(quantity + 1),
                         ),
@@ -239,11 +278,13 @@ class _CartItemCard extends StatelessWidget {
 /// The pill-shaped − / count / + control.
 class _QuantityStepper extends StatelessWidget {
   final int quantity;
-  final VoidCallback onDecrease;
+  final bool isUpdating;
+  final VoidCallback? onDecrease;
   final VoidCallback? onIncrease;
 
   const _QuantityStepper({
     required this.quantity,
+    required this.isUpdating,
     required this.onDecrease,
     required this.onIncrease,
   });
@@ -279,15 +320,23 @@ class _QuantityStepper extends StatelessWidget {
           ),
           ConstrainedBox(
             constraints: const BoxConstraints(minWidth: 22),
-            child: Text(
-              '$quantity',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: BuyerColors.maroon,
-              ),
-            ),
+            child: isUpdating
+                ? const Padding(
+                    padding: EdgeInsets.all(4),
+                    child: SizedBox.square(
+                      dimension: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : Text(
+                    '$quantity',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: BuyerColors.maroon,
+                    ),
+                  ),
           ),
           button(
             tooltip: 'Increase quantity',

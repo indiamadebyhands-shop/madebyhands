@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:madebyhands/features/buyer/presentation/theme/buyer_theme.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -37,13 +38,15 @@ class PublicCreatorStorefrontPage extends StatelessWidget {
         body: BlocBuilder<BuyerBloc, BuyerState>(
           buildWhen: (previous, current) =>
               previous.products != current.products ||
-              previous.favoriteIds != current.favoriteIds,
+              previous.favoriteIds != current.favoriteIds ||
+              previous.pendingFavoriteIds != current.pendingFavoriteIds,
           builder: (context, state) => _StorefrontBody(
             creator: creator,
             products: state.products
                 .where((product) => product.creatorUid == creator.uid)
                 .toList(),
             favoriteIds: state.favoriteIds,
+            pendingFavoriteIds: state.pendingFavoriteIds,
             onProductTap: onProductTap,
             onSave: (product) => context.read<BuyerBloc>().add(
               BuyerToggleFavorite(userId: buyerId, product: product),
@@ -59,6 +62,7 @@ class _StorefrontBody extends StatelessWidget {
   final PublicCreator creator;
   final List<Product> products;
   final Set<String> favoriteIds;
+  final Set<String> pendingFavoriteIds;
   final ValueChanged<Product>? onProductTap;
   final ValueChanged<Product>? onSave;
 
@@ -66,6 +70,7 @@ class _StorefrontBody extends StatelessWidget {
     required this.creator,
     required this.products,
     required this.favoriteIds,
+    required this.pendingFavoriteIds,
     this.onProductTap,
     this.onSave,
   });
@@ -123,6 +128,7 @@ class _StorefrontBody extends StatelessWidget {
                   return ProductCard(
                     product: product,
                     isSaved: favoriteIds.contains(product.id),
+                    isUpdating: pendingFavoriteIds.contains(product.id),
                     onTap: onProductTap == null
                         ? null
                         : () => onProductTap(product),
@@ -292,39 +298,153 @@ class _CreatorHeader extends StatelessWidget {
           const SizedBox(height: 20),
           const BuyerHeading('Creator story'),
           const SizedBox(height: 6),
-          Text(
-            creator.story,
-            style: const TextStyle(height: 1.5, color: BuyerColors.body),
-          ),
+          _ExpandableCreatorStory(text: creator.story),
         ],
         if (creator.socialLinks.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: creator.socialLinks.map((link) {
-              return ActionChip(
-                avatar: const Icon(Icons.link, size: 18),
-                label: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 200),
-                  child: Text(
-                    _linkLabel(link),
-                    overflow: TextOverflow.ellipsis,
+          const SizedBox(height: 10),
+          InkWell(
+            key: const Key('creator-social-links-summary'),
+            borderRadius: BorderRadius.circular(8),
+            onTap: () => _showSocialLinks(context),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 5),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.link, size: 17, color: BuyerColors.maroon),
+                  const SizedBox(width: 5),
+                  Flexible(
+                    child: Text(
+                      _socialLinksSummary(creator.socialLinks),
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: BuyerColors.ink,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
-                ),
-                onPressed: () => _openLink(context, link),
-              );
-            }).toList(),
+                ],
+              ),
+            ),
           ),
         ],
       ],
     ),
   );
 
-  static String _linkLabel(String raw) {
+  static String _socialLinksSummary(List<String> links) {
+    final firstName = _socialLinkInfo(links.first).name;
+    final remaining = links.length - 1;
+    return remaining == 0
+        ? firstName
+        : '$firstName and $remaining more ${remaining == 1 ? 'link' : 'links'}';
+  }
+
+  static _SocialLinkInfo _socialLinkInfo(String raw) {
     final uri = Uri.tryParse(raw.startsWith('http') ? raw : 'https://$raw');
-    final host = uri?.host.replaceFirst('www.', '') ?? '';
-    return host.isEmpty ? 'Link' : host;
+    final host = (uri?.host ?? '').toLowerCase().replaceFirst('www.', '');
+    if (host.contains('youtube.com') || host.contains('youtu.be')) {
+      return const _SocialLinkInfo('YouTube', Icons.smart_display_outlined);
+    }
+    if (host.contains('instagram.com')) {
+      return const _SocialLinkInfo('Instagram', Icons.camera_alt_outlined);
+    }
+    if (host.contains('facebook.com') || host.contains('fb.com')) {
+      return const _SocialLinkInfo('Facebook', Icons.facebook_outlined);
+    }
+    if (host.contains('twitter.com') || host.contains('x.com')) {
+      return const _SocialLinkInfo('X (Twitter)', Icons.alternate_email);
+    }
+    if (host.contains('linkedin.com')) {
+      return const _SocialLinkInfo('LinkedIn', Icons.business_center_outlined);
+    }
+    if (host.contains('pinterest.com') || host.contains('pin.it')) {
+      return const _SocialLinkInfo('Pinterest', Icons.push_pin_outlined);
+    }
+    return _SocialLinkInfo(
+      host.isEmpty ? 'Website' : host,
+      Icons.language_outlined,
+    );
+  }
+
+  Future<void> _showSocialLinks(BuildContext context) => showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+      titlePadding: const EdgeInsets.fromLTRB(22, 18, 8, 4),
+      contentPadding: const EdgeInsets.fromLTRB(14, 6, 14, 20),
+      title: Row(
+        children: [
+          const Expanded(
+            child: Text('Links', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+          IconButton(
+            key: const Key('close-creator-social-links'),
+            tooltip: 'Close links',
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            icon: const Icon(Icons.close),
+          ),
+        ],
+      ),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 460),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (
+                var index = 0;
+                index < creator.socialLinks.length;
+                index++
+              ) ...[
+                if (index > 0) const SizedBox(height: 4),
+                _socialLinkTile(context, creator.socialLinks[index]),
+              ],
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Widget _socialLinkTile(BuildContext context, String link) {
+    final info = _socialLinkInfo(link);
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => _openLink(context, link),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Icon(info.icon, size: 25, color: BuyerColors.maroon),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    info.name,
+                    style: const TextStyle(
+                      color: BuyerColors.ink,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    link.replaceFirst(RegExp(r'^https?://'), ''),
+                    style: const TextStyle(color: BuyerColors.maroon),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _openLink(BuildContext context, String raw) async {
@@ -339,6 +459,178 @@ class _CreatorHeader extends StatelessWidget {
       }
     }
   }
+}
+
+class _ExpandableCreatorStory extends StatefulWidget {
+  final String text;
+
+  const _ExpandableCreatorStory({required this.text});
+
+  @override
+  State<_ExpandableCreatorStory> createState() =>
+      _ExpandableCreatorStoryState();
+}
+
+class _ExpandableCreatorStoryState extends State<_ExpandableCreatorStory> {
+  static const _style = TextStyle(height: 1.5, color: BuyerColors.body);
+  static const _linkStyle = TextStyle(
+    height: 1.5,
+    color: BuyerColors.ink,
+    fontWeight: FontWeight.w800,
+  );
+  late final TapGestureRecognizer _readMoreRecognizer;
+  late final TapGestureRecognizer _seeLessRecognizer;
+  bool _expanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _readMoreRecognizer = TapGestureRecognizer()
+      ..onTap = () => setState(() => _expanded = true);
+    _seeLessRecognizer = TapGestureRecognizer()
+      ..onTap = () => setState(() => _expanded = false);
+  }
+
+  @override
+  void dispose() {
+    _readMoreRecognizer.dispose();
+    _seeLessRecognizer.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ExpandableCreatorStory oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.text != widget.text) _expanded = false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textStyle = DefaultTextStyle.of(context).style.merge(_style);
+    final linkStyle = textStyle.merge(_linkStyle);
+    if (_expanded) {
+      return Semantics(
+        button: true,
+        label: 'See less creator story',
+        child: GestureDetector(
+          key: const Key('creator-story-see-less'),
+          behavior: HitTestBehavior.opaque,
+          onTap: () => setState(() => _expanded = false),
+          child: Text.rich(
+            TextSpan(
+              style: textStyle,
+              children: [
+                TextSpan(text: '${widget.text.trim()} '),
+                TextSpan(
+                  text: 'See less',
+                  style: linkStyle,
+                  recognizer: _seeLessRecognizer,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final textScaler = MediaQuery.textScalerOf(context);
+        final direction = Directionality.of(context);
+        final fullPainter = TextPainter(
+          text: TextSpan(text: widget.text, style: textStyle),
+          textDirection: direction,
+          textScaler: textScaler,
+          maxLines: 2,
+        )..layout(maxWidth: constraints.maxWidth);
+
+        if (!fullPainter.didExceedMaxLines) {
+          return Text(widget.text, style: textStyle);
+        }
+
+        var low = 0;
+        var high = widget.text.length;
+        while (low < high) {
+          final middle = (low + high + 1) ~/ 2;
+          final candidate = widget.text.substring(0, middle).trimRight();
+          final painter = TextPainter(
+            text: TextSpan(
+              style: textStyle,
+              children: [
+                TextSpan(text: '$candidate… '),
+                TextSpan(text: 'Read more', style: linkStyle),
+              ],
+            ),
+            textDirection: direction,
+            textScaler: textScaler,
+            maxLines: 2,
+          )..layout(maxWidth: constraints.maxWidth);
+          if (painter.didExceedMaxLines) {
+            high = middle - 1;
+          } else {
+            low = middle;
+          }
+        }
+
+        var visibleText = widget.text.substring(0, low).trimRight();
+        final lastSpace = visibleText.lastIndexOf(' ');
+        if (lastSpace > visibleText.length * 0.75) {
+          visibleText = visibleText.substring(0, lastSpace);
+        }
+
+        // Keep a small safety margin for platform-specific font metrics.
+        while (visibleText.isNotEmpty) {
+          final exactPainter = TextPainter(
+            text: TextSpan(
+              style: textStyle,
+              children: [
+                TextSpan(text: '$visibleText… '),
+                TextSpan(text: 'Read more', style: linkStyle),
+              ],
+            ),
+            textDirection: direction,
+            textScaler: textScaler,
+            maxLines: 2,
+          )..layout(maxWidth: constraints.maxWidth - 2);
+          if (!exactPainter.didExceedMaxLines) break;
+          visibleText = visibleText
+              .substring(0, visibleText.length - 1)
+              .trimRight();
+        }
+
+        return Semantics(
+          button: true,
+          label: 'Read more creator story',
+          child: GestureDetector(
+            key: const Key('creator-story-read-more'),
+            behavior: HitTestBehavior.opaque,
+            onTap: () => setState(() => _expanded = true),
+            child: Text.rich(
+              TextSpan(
+                style: textStyle,
+                children: [
+                  TextSpan(text: '$visibleText… '),
+                  TextSpan(
+                    text: 'Read more',
+                    style: linkStyle,
+                    recognizer: _readMoreRecognizer,
+                  ),
+                ],
+              ),
+              maxLines: 2,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SocialLinkInfo {
+  final String name;
+  final IconData icon;
+
+  const _SocialLinkInfo(this.name, this.icon);
 }
 
 class _ExhibitionGallery extends StatelessWidget {

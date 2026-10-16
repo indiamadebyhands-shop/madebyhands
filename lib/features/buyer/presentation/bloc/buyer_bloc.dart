@@ -40,7 +40,10 @@ class BuyerBloc extends Bloc<BuyerEvent, BuyerState> {
     on<BuyerSessionEnded>(_onSessionEnded);
   }
 
-  void _onWatchCategories(BuyerWatchCategories event, Emitter<BuyerState> emit) {
+  void _onWatchCategories(
+    BuyerWatchCategories event,
+    Emitter<BuyerState> emit,
+  ) {
     _categorySubscription?.cancel();
     _categorySubscription = _repository.watchCategories().listen(
       (categories) => add(BuyerCategoriesUpdated(categories)),
@@ -91,6 +94,7 @@ class BuyerBloc extends Bloc<BuyerEvent, BuyerState> {
     Emitter<BuyerState> emit,
   ) async {
     _cartUserId = event.userId;
+    emit(state.copyWith(isLoadingCart: true));
     try {
       final preferences = await SharedPreferences.getInstance();
       final raw = preferences.getString('buyer_cart_${event.userId}');
@@ -99,6 +103,7 @@ class BuyerBloc extends Bloc<BuyerEvent, BuyerState> {
           state.copyWith(
             cartQuantities: const {},
             cartCustomizations: const {},
+            isLoadingCart: false,
           ),
         );
         return;
@@ -133,11 +138,16 @@ class BuyerBloc extends Bloc<BuyerEvent, BuyerState> {
         state.copyWith(
           cartQuantities: quantities,
           cartCustomizations: selections,
+          isLoadingCart: false,
         ),
       );
     } catch (_) {
       emit(
-        state.copyWith(cartQuantities: const {}, cartCustomizations: const {}),
+        state.copyWith(
+          cartQuantities: const {},
+          cartCustomizations: const {},
+          isLoadingCart: false,
+        ),
       );
     }
   }
@@ -173,12 +183,14 @@ class BuyerBloc extends Bloc<BuyerEvent, BuyerState> {
   }
 
   void _onWatchFavorites(BuyerWatchFavorites event, Emitter<BuyerState> emit) {
+    emit(state.copyWith(isLoadingFavorites: true));
     _favoriteSubscription?.cancel();
     _favoriteSubscription = _repository
         .watchFavoriteProductIds(event.userId)
         .listen(
           (ids) => add(BuyerFavoritesUpdated(ids)),
-          onError: (_) => add(const BuyerErrorOccurred('Could not load your wishlist.')),
+          onError: (_) =>
+              add(const BuyerErrorOccurred('Could not load your wishlist.')),
         );
   }
 
@@ -186,14 +198,27 @@ class BuyerBloc extends Bloc<BuyerEvent, BuyerState> {
     BuyerFavoritesUpdated event,
     Emitter<BuyerState> emit,
   ) {
-    emit(state.copyWith(favoriteIds: event.favoriteIds));
+    emit(
+      state.copyWith(favoriteIds: event.favoriteIds, isLoadingFavorites: false),
+    );
   }
 
   Future<void> _onToggleFavorite(
     BuyerToggleFavorite event,
     Emitter<BuyerState> emit,
   ) async {
+    if (state.pendingFavoriteIds.contains(event.product.id)) return;
     final isFavorite = state.favoriteIds.contains(event.product.id);
+    final updatedFavorites = {...state.favoriteIds};
+    isFavorite
+        ? updatedFavorites.remove(event.product.id)
+        : updatedFavorites.add(event.product.id);
+    emit(
+      state.copyWith(
+        favoriteIds: updatedFavorites,
+        pendingFavoriteIds: {...state.pendingFavoriteIds, event.product.id},
+      ),
+    );
     try {
       await _repository.setFavorite(
         userId: event.userId,
@@ -201,7 +226,21 @@ class BuyerBloc extends Bloc<BuyerEvent, BuyerState> {
         isFavorite: !isFavorite,
       );
     } catch (_) {
+      emit(
+        state.copyWith(
+          favoriteIds: {...state.favoriteIds}
+            ..remove(event.product.id)
+            ..addAll(isFavorite ? [event.product.id] : const <String>[]),
+        ),
+      );
       add(const BuyerErrorOccurred('Could not update your wishlist.'));
+    } finally {
+      emit(
+        state.copyWith(
+          pendingFavoriteIds: {...state.pendingFavoriteIds}
+            ..remove(event.product.id),
+        ),
+      );
     }
   }
 
@@ -209,6 +248,7 @@ class BuyerBloc extends Bloc<BuyerEvent, BuyerState> {
     BuyerUpdateCartQuantity event,
     Emitter<BuyerState> emit,
   ) async {
+    if (state.pendingCartProductIds.contains(event.product.id)) return;
     final newCart = Map<String, int>.from(state.cartQuantities);
     final customizations = Map<String, ProductCustomizationSelection>.from(
       state.cartCustomizations,
@@ -227,9 +267,19 @@ class BuyerBloc extends Bloc<BuyerEvent, BuyerState> {
       state.copyWith(
         cartQuantities: newCart,
         cartCustomizations: customizations,
+        pendingCartProductIds: {
+          ...state.pendingCartProductIds,
+          event.product.id,
+        },
       ),
     );
     await _persistCart(newCart, customizations);
+    emit(
+      state.copyWith(
+        pendingCartProductIds: {...state.pendingCartProductIds}
+          ..remove(event.product.id),
+      ),
+    );
   }
 
   Future<void> _onUpdateProductCustomization(
@@ -287,7 +337,14 @@ class BuyerBloc extends Bloc<BuyerEvent, BuyerState> {
   }
 
   void _onErrorOccurred(BuyerErrorOccurred event, Emitter<BuyerState> emit) {
-    emit(state.copyWith(errorMessage: event.message, isLoadingProducts: false));
+    emit(
+      state.copyWith(
+        errorMessage: event.message,
+        isLoadingProducts: false,
+        isLoadingFavorites: false,
+        isLoadingCart: false,
+      ),
+    );
   }
 
   @override
