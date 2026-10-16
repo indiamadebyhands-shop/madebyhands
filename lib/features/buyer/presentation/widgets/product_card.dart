@@ -8,6 +8,7 @@ import 'package:madebyhands/features/buyer/presentation/widgets/product_thumbnai
 class ProductCard extends StatelessWidget {
   final Product product;
   final bool isSaved;
+  final bool isUpdating;
   final VoidCallback? onTap;
 
   /// Hides the save button when null (e.g. a creator previewing their shop).
@@ -17,6 +18,7 @@ class ProductCard extends StatelessWidget {
     super.key,
     required this.product,
     required this.isSaved,
+    this.isUpdating = false,
     this.onTap,
     this.onSave,
   });
@@ -49,10 +51,19 @@ class ProductCard extends StatelessWidget {
                       right: 8,
                       child: IconButton.filledTonal(
                         tooltip: isSaved ? 'Remove from saved' : 'Save item',
-                        onPressed: onSave,
-                        icon: Icon(
-                          isSaved ? Icons.favorite : Icons.favorite_border,
-                        ),
+                        onPressed: isUpdating ? null : onSave,
+                        icon: isUpdating
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Icon(
+                                isSaved
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                              ),
                         style: IconButton.styleFrom(
                           backgroundColor: BuyerColors.card.withValues(
                             alpha: 0.92,

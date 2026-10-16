@@ -25,7 +25,9 @@ class SavedTab extends StatelessWidget {
       child: BlocBuilder<BuyerBloc, BuyerState>(
         buildWhen: (previous, current) =>
             previous.products != current.products ||
-            previous.favoriteIds != current.favoriteIds,
+            previous.favoriteIds != current.favoriteIds ||
+            previous.pendingFavoriteIds != current.pendingFavoriteIds ||
+            previous.isLoadingFavorites != current.isLoadingFavorites,
         builder: (context, state) {
           final products = state.products
               .where((product) => state.favoriteIds.contains(product.id))
@@ -34,6 +36,8 @@ class SavedTab extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (state.isLoadingFavorites)
+                const LinearProgressIndicator(minHeight: 2),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
                 child: BuyerPageHeader(
@@ -67,13 +71,11 @@ class SavedTab extends StatelessWidget {
                           return ProductCard(
                             product: product,
                             isSaved: true,
-                            onTap: () => onProductTap(product),
-                            onSave: () => context.read<BuyerBloc>().add(
-                              BuyerToggleFavorite(
-                                userId: userId,
-                                product: product,
-                              ),
+                            isUpdating: state.pendingFavoriteIds.contains(
+                              product.id,
                             ),
+                            onTap: () => onProductTap(product),
+                            onSave: () => _removeWithUndo(context, product),
                           );
                         },
                       ),
@@ -83,5 +85,29 @@ class SavedTab extends StatelessWidget {
         },
       ),
     );
+  }
+
+  void _removeWithUndo(BuildContext context, Product product) {
+    final bloc = context.read<BuyerBloc>();
+    bloc.add(BuyerToggleFavorite(userId: userId, product: product));
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('${product.name} removed from wishlist'),
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () async {
+              while (bloc.state.pendingFavoriteIds.contains(product.id)) {
+                await Future<void>.delayed(const Duration(milliseconds: 40));
+              }
+              if (bloc.isClosed) return;
+              if (!bloc.state.favoriteIds.contains(product.id)) {
+                bloc.add(BuyerToggleFavorite(userId: userId, product: product));
+              }
+            },
+          ),
+        ),
+      );
   }
 }

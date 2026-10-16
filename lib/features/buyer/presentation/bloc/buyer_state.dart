@@ -10,6 +10,10 @@ class BuyerState extends Equatable {
   final Map<String, int> cartQuantities;
   final Map<String, ProductCustomizationSelection> cartCustomizations;
   final bool isLoadingProducts;
+  final bool isLoadingFavorites;
+  final bool isLoadingCart;
+  final Set<String> pendingFavoriteIds;
+  final Set<String> pendingCartProductIds;
   final String? errorMessage;
 
   const BuyerState({
@@ -20,6 +24,10 @@ class BuyerState extends Equatable {
     this.cartQuantities = const {},
     this.cartCustomizations = const {},
     this.isLoadingProducts = false,
+    this.isLoadingFavorites = false,
+    this.isLoadingCart = false,
+    this.pendingFavoriteIds = const {},
+    this.pendingCartProductIds = const {},
     this.errorMessage,
   });
 
@@ -31,6 +39,10 @@ class BuyerState extends Equatable {
     Map<String, int>? cartQuantities,
     Map<String, ProductCustomizationSelection>? cartCustomizations,
     bool? isLoadingProducts,
+    bool? isLoadingFavorites,
+    bool? isLoadingCart,
+    Set<String>? pendingFavoriteIds,
+    Set<String>? pendingCartProductIds,
     String? errorMessage,
   }) {
     return BuyerState(
@@ -41,6 +53,11 @@ class BuyerState extends Equatable {
       cartQuantities: cartQuantities ?? this.cartQuantities,
       cartCustomizations: cartCustomizations ?? this.cartCustomizations,
       isLoadingProducts: isLoadingProducts ?? this.isLoadingProducts,
+      isLoadingFavorites: isLoadingFavorites ?? this.isLoadingFavorites,
+      isLoadingCart: isLoadingCart ?? this.isLoadingCart,
+      pendingFavoriteIds: pendingFavoriteIds ?? this.pendingFavoriteIds,
+      pendingCartProductIds:
+          pendingCartProductIds ?? this.pendingCartProductIds,
       errorMessage: errorMessage,
     );
   }
@@ -54,6 +71,10 @@ class BuyerState extends Equatable {
     cartQuantities,
     cartCustomizations,
     isLoadingProducts,
+    isLoadingFavorites,
+    isLoadingCart,
+    pendingFavoriteIds,
+    pendingCartProductIds,
     errorMessage,
   ];
 }

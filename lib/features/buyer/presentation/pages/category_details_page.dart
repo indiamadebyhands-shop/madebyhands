@@ -326,6 +326,7 @@ class _CategoryDetailsPageState extends State<CategoryDetailsPage> {
                 return ProductCard(
                   product: product,
                   isSaved: state.favoriteIds.contains(product.id),
+                  isUpdating: state.pendingFavoriteIds.contains(product.id),
                   onTap: () => widget.onProductTap(product),
                   onSave: () => context.read<BuyerBloc>().add(
                     BuyerToggleFavorite(

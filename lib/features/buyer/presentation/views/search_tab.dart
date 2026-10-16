@@ -41,10 +41,15 @@ class SearchTab extends StatefulWidget {
   State<SearchTab> createState() => _SearchTabState();
 }
 
-class _SearchTabState extends State<SearchTab> {
+class _SearchTabState extends State<SearchTab>
+    with AutomaticKeepAliveClientMixin<SearchTab> {
   String _query = '';
   final Set<String> _selectedCategories = {};
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -73,6 +78,7 @@ class _SearchTabState extends State<SearchTab> {
     widget.categoryRequest?.removeListener(_applyCategoryRequest);
     widget.searchRequest?.removeListener(_applySearchRequest);
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -246,13 +252,16 @@ class _SearchTabState extends State<SearchTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return BuyerBackground(
       child: BlocBuilder<BuyerBloc, BuyerState>(
         buildWhen: (previous, current) =>
             previous.products != current.products ||
             previous.creators != current.creators ||
             previous.categories != current.categories ||
-            previous.favoriteIds != current.favoriteIds,
+            previous.favoriteIds != current.favoriteIds ||
+            previous.pendingFavoriteIds != current.pendingFavoriteIds ||
+            previous.isLoadingProducts != current.isLoadingProducts,
         builder: (context, state) {
           final normalizedCategoryQuery = normalizeCategory(_query);
           final matchingCategories = state.categories
@@ -295,7 +304,10 @@ class _SearchTabState extends State<SearchTab> {
 
           return CustomScrollView(
             key: const PageStorageKey('buyer-search'),
+            controller: _scrollController,
             slivers: [
+              if (state.isLoadingProducts)
+                const SliverToBoxAdapter(child: LinearProgressIndicator()),
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
                 sliver: SliverList.list(
@@ -492,6 +504,9 @@ class _SearchTabState extends State<SearchTab> {
                         return ProductCard(
                           product: product,
                           isSaved: state.favoriteIds.contains(product.id),
+                          isUpdating: state.pendingFavoriteIds.contains(
+                            product.id,
+                          ),
                           onTap: () => widget.onProductTap(product),
                           onSave: () => context.read<BuyerBloc>().add(
                             BuyerToggleFavorite(

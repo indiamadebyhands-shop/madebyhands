@@ -54,10 +54,20 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
   StreamSubscription<List<BuyerProductNotification>>? _notificationSubscription;
   String? _pendingSharedProductId;
   String? _pendingSharedCreatorId;
+  bool _navigationTransitionInProgress = false;
 
   /// Category the Shop tab should filter by when opened from Home.
   final ValueNotifier<String?> _shopCategory = ValueNotifier(null);
   final ValueNotifier<String?> _shopSearch = ValueNotifier(null);
+
+  void _pushOnce(Route<void> route) {
+    if (_navigationTransitionInProgress || !mounted) return;
+    _navigationTransitionInProgress = true;
+    Navigator.of(context).push(route);
+    Future<void>.delayed(const Duration(milliseconds: 450), () {
+      _navigationTransitionInProgress = false;
+    });
+  }
 
   @override
   void initState() {
@@ -143,7 +153,7 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
 
   void _openProduct(Product initialProduct) {
     final buyerBloc = context.read<BuyerBloc>();
-    Navigator.of(context).push(
+    _pushOnce(
       MaterialPageRoute(
         builder: (_) => BlocProvider.value(
           value: buyerBloc,
@@ -151,7 +161,10 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
             buildWhen: (previous, current) =>
                 previous.products != current.products ||
                 previous.favoriteIds != current.favoriteIds ||
+                previous.pendingFavoriteIds != current.pendingFavoriteIds ||
                 previous.cartQuantities != current.cartQuantities ||
+                previous.pendingCartProductIds !=
+                    current.pendingCartProductIds ||
                 previous.cartCustomizations != current.cartCustomizations ||
                 previous.creators != current.creators,
             builder: (context, state) {
@@ -175,10 +188,16 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
               return ProductDetailsPage(
                 product: product,
                 isSaved: state.favoriteIds.contains(product.id),
+                isFavoriteUpdating: state.pendingFavoriteIds.contains(
+                  product.id,
+                ),
                 cartQuantity: state.cartQuantities[product.id] ?? 0,
                 cartCount: state.cartQuantities.values.fold(
                   0,
                   (total, quantity) => total + quantity,
+                ),
+                isCartUpdating: state.pendingCartProductIds.contains(
+                  product.id,
                 ),
                 onSave: () => buyerBloc.add(
                   BuyerToggleFavorite(
@@ -279,7 +298,7 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
 
   void _openCreator(PublicCreator creator) {
     final buyerBloc = context.read<BuyerBloc>();
-    Navigator.of(context).push(
+    _pushOnce(
       MaterialPageRoute(
         builder: (_) => BlocProvider.value(
           value: buyerBloc,
@@ -299,7 +318,7 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
 
   void _openSearch() {
     final buyerBloc = context.read<BuyerBloc>();
-    Navigator.of(context).push(
+    _pushOnce(
       MaterialPageRoute(
         builder: (_) => BlocProvider.value(
           value: buyerBloc,
@@ -326,7 +345,7 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
 
   void _openProductWishlist() {
     final buyerBloc = context.read<BuyerBloc>();
-    Navigator.of(context).push(
+    _pushOnce(
       MaterialPageRoute(
         builder: (_) => BlocProvider.value(
           value: buyerBloc,
@@ -350,7 +369,7 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
 
   void _openProductCart() {
     final buyerBloc = context.read<BuyerBloc>();
-    Navigator.of(context).push(
+    _pushOnce(
       MaterialPageRoute(
         builder: (_) => BlocProvider.value(
           value: buyerBloc,
@@ -385,7 +404,7 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
 
   void _openShopCategory(String category) {
     final buyerBloc = context.read<BuyerBloc>();
-    Navigator.of(context).push(
+    _pushOnce(
       MaterialPageRoute(
         builder: (_) => BlocProvider.value(
           value: buyerBloc,
@@ -402,7 +421,7 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
 
   void _openNotifications() {
     final buyerRepository = context.read<BuyerBloc>().repository;
-    Navigator.of(context).push(
+    _pushOnce(
       MaterialPageRoute(
         builder: (_) => BuyerNotificationsPage(
           notifications: _notifications,
@@ -442,7 +461,7 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
     final products = state.products
         .where((product) => state.cartQuantities.containsKey(product.id))
         .toList();
-    Navigator.of(context).push(
+    _pushOnce(
       MaterialPageRoute(
         builder: (_) => CheckoutPage(
           user: _currentUser,
@@ -469,7 +488,7 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
   ) {
     final buyerBloc = context.read<BuyerBloc>();
     final quantity = cartQuantity > 0 ? cartQuantity : 1;
-    Navigator.of(context).push(
+    _pushOnce(
       MaterialPageRoute(
         builder: (_) => CheckoutPage(
           user: _currentUser,

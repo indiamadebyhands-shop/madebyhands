@@ -98,11 +98,94 @@ void main() {
     expect(find.text('Blue Pottery Vase'), findsOneWidget);
     expect(find.text('Handwoven Storage Basket'), findsNothing);
 
+    final shopScroll = tester.widget<CustomScrollView>(
+      find.byKey(const PageStorageKey('buyer-search')),
+    );
+    await tester.drag(
+      find.byKey(const PageStorageKey('buyer-search')),
+      const Offset(0, -100),
+    );
+    await tester.pumpAndSettle();
+    final savedShopOffset = shopScroll.controller!.offset;
+
+    await tester.tap(find.text('Blue Pottery Vase'));
+    await tester.pumpAndSettle();
+    expect(find.text('Product details'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Filter (2)'), findsOneWidget);
+    expect(
+      tester
+          .widget<CustomScrollView>(
+            find.byKey(const PageStorageKey('buyer-search')),
+          )
+          .controller!
+          .offset,
+      closeTo(savedShopOffset, 0.1),
+    );
+
     await tester.tap(find.text('Clear'));
     await tester.pump();
     await tester.enterText(find.byType(TextField), 'pottery');
     await tester.pump();
 
+    expect(find.text('Blue Pottery Vase'), findsOneWidget);
+    await tester.ensureVisible(find.text('Blue Pottery Vase'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Blue Pottery Vase'));
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      'pottery',
+    );
+  });
+
+  testWidgets('cart and wishlist removals can be undone', (tester) async {
+    await tester.pumpWidget(buildDashboard());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Shop').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'pottery');
+    await tester.pump();
+    await tester.tap(find.text('Blue Pottery Vase'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byTooltip('Save item'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.byTooltip('Save item'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Open wishlist'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Remove from saved'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('removed from wishlist'), findsOneWidget);
+    await tester.tap(find.text('Undo'));
+    await tester.pumpAndSettle();
+    final buyerBloc = tester
+        .element(find.byType(BuyerDashboardPage, skipOffstage: false))
+        .read<BuyerBloc>();
+    expect(buyerBloc.state.pendingFavoriteIds, isEmpty);
+    expect(buyerBloc.state.favoriteIds, contains('blue-pottery'));
+    expect(find.text('Blue Pottery Vase'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add to cart'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Open cart'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Remove from cart'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('removed from cart'), findsOneWidget);
+    await tester.tap(find.text('Undo'));
+    await tester.pumpAndSettle();
     expect(find.text('Blue Pottery Vase'), findsOneWidget);
   });
 
@@ -499,6 +582,11 @@ void main() {
   testWidgets('buyer opens a creator profile and complete storefront', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     final repository = MockBuyerRepository(
       publicCreators: const [
         PublicCreator(
@@ -507,7 +595,13 @@ void main() {
           businessName: 'Asha Weaves',
           bio: 'Handwoven homeware made with natural fibres.',
           location: 'Jaipur, Rajasthan',
-          story: 'A family weaving practice carried forward by local artisans.',
+          story:
+              'A family weaving practice carried forward by local artisans across generations, preserving natural dye traditions while creating thoughtful pieces for contemporary homes and celebrating the community behind every handmade piece.',
+          socialLinks: [
+            'https://instagram.com/ashaweaves',
+            'https://youtube.com/@ashaweaves',
+            'https://ashaweaves.example.com',
+          ],
           exhibitionPictures: ['https://example.com/exhibition.jpg'],
           isVerified: true,
         ),
@@ -527,14 +621,41 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Creator story'), findsOneWidget);
+    expect(find.byKey(const Key('creator-story-read-more')), findsOneWidget);
+    expect(
+      find.textContaining('Read more', findRichText: true),
+      findsOneWidget,
+    );
+    expect(find.text('Instagram and 2 more links'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('creator-story-read-more')));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining(
+        repository.publicCreators!.first.story,
+        findRichText: true,
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('creator-story-see-less')), findsOneWidget);
+    expect(find.textContaining('See less', findRichText: true), findsOneWidget);
+    await tester.tap(find.byKey(const Key('creator-story-see-less')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('creator-story-read-more')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('creator-social-links-summary')));
+    await tester.pumpAndSettle();
+    expect(find.text('Links'), findsOneWidget);
+    expect(find.text('Instagram'), findsOneWidget);
+    expect(find.text('YouTube'), findsOneWidget);
+    expect(find.byKey(const Key('close-creator-social-links')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('close-creator-social-links')));
+    await tester.pumpAndSettle();
+
     expect(find.text('Exhibition showcase'), findsOneWidget);
     expect(find.byKey(const Key('creator-exhibition-gallery')), findsOneWidget);
     expect(find.text('Storefront · 1 product'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Handwoven Storage Basket'),
-      300,
-      scrollable: find.byType(Scrollable).last,
-    );
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -700));
     await tester.pumpAndSettle();
     final storefrontProduct = find
         .ancestor(
