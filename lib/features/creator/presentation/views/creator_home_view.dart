@@ -6,10 +6,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:madebyhands/core/constants/image_upload.dart';
 import 'package:madebyhands/core/theme/app_theme.dart';
+import 'package:madebyhands/features/auth/domain/entities/user_entity.dart';
+import 'package:madebyhands/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:madebyhands/features/creator/domain/entities/creator_order.dart';
 import 'package:madebyhands/features/creator/domain/entities/creator_profile.dart';
 import 'package:madebyhands/features/creator/domain/repositories/creator_repository.dart';
 import 'package:madebyhands/features/creator/presentation/bloc/creator_bloc.dart';
+import 'package:madebyhands/features/creator/presentation/pages/creator_onboarding_page.dart';
 import 'package:madebyhands/features/creator/presentation/pages/creator_verification_page.dart';
 import 'package:madebyhands/features/orders/domain/order_status.dart';
 import 'package:madebyhands/init_dependencies.dart';
@@ -186,7 +189,7 @@ class _PortfolioBannerState extends State<_PortfolioBanner> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Studio Portfolio',
+                        'Studio Banner',
                         style: GoogleFonts.montserrat(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -195,7 +198,7 @@ class _PortfolioBannerState extends State<_PortfolioBanner> {
                       ),
                       const SizedBox(height: 4),
                       const Text(
-                        'Add portfolio images in Profile to showcase your craft studio.',
+                        'Add banner image in Profile to showcase your craft studio.',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.mutedText,
@@ -351,74 +354,140 @@ class _StorefrontCard extends StatelessWidget {
 
   const _StorefrontCard({required this.profile});
 
+  void _editProfile(BuildContext context) {
+    final authState = context.read<AuthBloc>().state;
+    final user = authState is AuthSuccess
+        ? authState.user
+        : UserEntity(
+            uid: profile.uid,
+            email: '',
+            name: profile.name,
+            role: 'creator',
+          );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CreatorOnboardingPage(
+          user: user,
+          existingProfile: profile,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: const Color(0xFF8B261D),
-        borderRadius: BorderRadius.circular(25),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF8B261D).withValues(alpha: 0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CircleAvatar(
+          radius: 36,
+          backgroundColor: const Color(0xFFF2DEDD),
+          backgroundImage: profile.profileImage.isNotEmpty
+              ? NetworkImage(profile.profileImage)
+              : null,
+          child: profile.profileImage.isEmpty
+              ? const Icon(
+                  Icons.person,
+                  size: 36,
+                  color: Color(0xFF8B261D),
+                )
+              : null,
+        ),
+        const SizedBox(width: 15),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 30,
-                backgroundColor: const Color(0xFFFAF6EE),
-                backgroundImage: profile.profileImage.isNotEmpty
-                    ? NetworkImage(profile.profileImage)
-                    : null,
-                child: profile.profileImage.isEmpty
-                    ? const Icon(
-                        Icons.person,
-                        size: 30,
-                        color: Color(0xFF8B261D),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 15),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
                       profile.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: GoogleFonts.montserrat(
+                        color: const Color(0xFF2A1810),
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    if (profile.location.isNotEmpty)
-                      Text(
+                  ),
+                  if (profile.isVerified) ...[
+                    const SizedBox(width: 6),
+                    const Icon(
+                      Icons.verified,
+                      size: 18,
+                      color: Color(0xFF8B261D),
+                    ),
+                  ],
+                ],
+              ),
+              if (profile.location.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(top: 2.0),
+                      child: Icon(
+                        Icons.location_on,
+                        size: 14,
+                        color: Color(0xFF8B261D),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
                         profile.location,
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.85),
-                          fontSize: 14,
+                        style: const TextStyle(
+                          color: Color(0xFF8A8F82),
+                          fontSize: 13,
+                          height: 1.2,
                         ),
                       ),
+                    ),
                   ],
+                ),
+              ],
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => _editProfile(context),
+                icon: const Icon(
+                  Icons.edit_outlined,
+                  size: 14,
+                  color: Color(0xFF8B261D),
+                ),
+                label: const Text(
+                  'Edit Profile',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF8B261D),
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  side: const BorderSide(
+                    color: Color(0xFF8B261D),
+                    width: 1.0,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
