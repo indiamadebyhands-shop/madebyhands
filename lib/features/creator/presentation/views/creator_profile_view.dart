@@ -35,7 +35,7 @@ class _CreatorProfileViewState extends State<CreatorProfileView> {
         _buildActionItem(
           icon: Icons.edit_outlined,
           title: 'Edit creator profile',
-          subtitle: 'Update bio, craft category, story, links and portfolio',
+          subtitle: 'Update bio, craft category, story, links and banner',
           onTap: () => _push(
             CreatorOnboardingPage(user: widget.user, existingProfile: profile),
           ),
@@ -124,7 +124,7 @@ class _CreatorProfileViewState extends State<CreatorProfileView> {
             Text(
               profile.location,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: const Color(0xFF8A8F82), fontSize: 13),
+              style: const TextStyle(color: Color(0xFF8A8F82), fontSize: 13),
             ),
           ],
           const SizedBox(height: 6),
@@ -162,7 +162,7 @@ class _CreatorProfileViewState extends State<CreatorProfileView> {
         ),
         subtitle: Text(
           subtitle,
-          style: const TextStyle(fontSize: 12, color: const Color(0xFF8A8F82)),
+          style: const TextStyle(fontSize: 12, color: Color(0xFF8A8F82)),
         ),
         trailing: const Icon(
           Icons.chevron_right,

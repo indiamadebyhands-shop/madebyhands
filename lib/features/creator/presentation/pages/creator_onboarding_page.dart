@@ -127,7 +127,20 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
     }
   }
 
+  int get _totalPortfolioImages =>
+      _existingPortfolioUrls.length + _portfolioImages.length;
+
   Future<void> _pickPortfolioImage() async {
+    if (_totalPortfolioImages >= 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Maximum 1 banner image allowed. Remove current image to replace.',
+          ),
+        ),
+      );
+      return;
+    }
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(
       source: ImageSource.gallery,
@@ -282,7 +295,7 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
       context: context,
       builder: (dialogCtx) {
         return Dialog(
-          backgroundColor: Colors.black.withOpacity(0.9),
+          backgroundColor: Colors.black.withValues(alpha: 0.9),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
@@ -319,7 +332,7 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
                         ? Image.network(
                             imageUrl,
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => const Icon(
+                            errorBuilder: (context, error, stack) => const Icon(
                               Icons.broken_image,
                               color: Colors.white,
                               size: 64,
@@ -781,14 +794,14 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Portfolio', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF8B261D))),
+        const Text('Banner', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF8B261D))),
         const SizedBox(height: 10),
         SizedBox(
           height: 120,
           child: ListView(
             scrollDirection: Axis.horizontal,
             children: [
-              _buildAddPortfolioButton(),
+              if (_totalPortfolioImages < 1) _buildAddPortfolioButton(),
               ..._existingPortfolioUrls.asMap().entries.map(
                     (e) => _buildExistingPortfolioItem(e.key, e.value),
                   ),
@@ -826,7 +839,7 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
           child: GestureDetector(
             onTap: () => _showImagePreviewDialog(
               imageUrl: url,
-              title: 'Portfolio Picture ${index + 1}',
+              title: 'Banner Picture ${index + 1}',
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(15),
@@ -870,7 +883,7 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
           child: GestureDetector(
             onTap: () => _showImagePreviewDialog(
               imageFile: file,
-              title: 'Portfolio Picture ${index + 1}',
+              title: 'Banner Picture ${index + 1}',
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(15),
@@ -912,7 +925,7 @@ class _OnboardingHeader extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           isEditMode
-              ? 'Keep your craft story, links, and portfolio up to date.'
+              ? 'Keep your craft story, links, and banner up to date.'
               : 'Tell the world about your craft and story.',
           style: const TextStyle(fontSize: 14, color: Color(0xFF8A8F82)),
         ),
