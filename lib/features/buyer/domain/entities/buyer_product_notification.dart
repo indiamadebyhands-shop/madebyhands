@@ -3,7 +3,7 @@ import 'package:madebyhands/features/orders/domain/order_status.dart';
 
 enum BuyerProductNotificationReason { wishlisted, purchased, both }
 
-enum BuyerNotificationType { newProduct, order }
+enum BuyerNotificationType { newProduct, order, support }
 
 class BuyerProductNotification {
   final String id;
@@ -15,6 +15,8 @@ class BuyerProductNotification {
   final String? orderId;
   final String? orderStatus;
   final String? orderRejectionReason;
+  final String? customTitle;
+  final String? customMessage;
 
   const BuyerProductNotification({
     required this.id,
@@ -26,6 +28,8 @@ class BuyerProductNotification {
     this.orderId,
     this.orderStatus,
     this.orderRejectionReason,
+    this.customTitle,
+    this.customMessage,
   });
 
   const BuyerProductNotification.order({
@@ -34,12 +38,32 @@ class BuyerProductNotification {
     required this.orderStatus,
     required this.publishedAt,
     this.orderRejectionReason,
-  }) : product = null,
-       category = '',
-       reason = null,
-       type = BuyerNotificationType.order;
+  })  : product = null,
+        category = '',
+        reason = null,
+        type = BuyerNotificationType.order,
+        customTitle = null,
+        customMessage = null;
+
+  const BuyerProductNotification.support({
+    required this.id,
+    required String title,
+    required String message,
+    required this.publishedAt,
+  })  : product = null,
+        category = '',
+        reason = null,
+        type = BuyerNotificationType.support,
+        orderId = null,
+        orderStatus = null,
+        orderRejectionReason = null,
+        customTitle = title,
+        customMessage = message;
 
   String get title {
+    if (type == BuyerNotificationType.support) {
+      return customTitle ?? 'Support Update';
+    }
     if (type != BuyerNotificationType.order) return 'New in $category';
     final bucket = OrderStatus.buyerStatus(orderStatus ?? '');
     return switch (bucket) {
@@ -51,6 +75,9 @@ class BuyerProductNotification {
   }
 
   String get message {
+    if (type == BuyerNotificationType.support) {
+      return customMessage ?? '';
+    }
     if (type != BuyerNotificationType.order) {
       return switch (reason) {
         BuyerProductNotificationReason.wishlisted =>

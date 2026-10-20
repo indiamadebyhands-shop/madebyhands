@@ -82,6 +82,18 @@ class FirestoreSupportRepository implements SupportRepository {
       'createdAt': FieldValue.serverTimestamp(),
       'isRead': false,
     });
+    batch.set(firestore.collection('notifications').doc(), {
+      'userId': userId,
+      'creatorUid': userId,
+      'type': 'support',
+      'category': 'support_ticket',
+      'title': 'Support ticket created',
+      'message':
+          'Your support ticket "$subject" has been successfully created.',
+      'targetId': ticket.id,
+      'createdAt': FieldValue.serverTimestamp(),
+      'isRead': false,
+    });
 
     await batch.commit();
     return ticket.id;
@@ -107,6 +119,31 @@ class FirestoreSupportRepository implements SupportRepository {
       'lastMessage': message,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+
+    if (senderRole == 'admin') {
+      final ticketSnap = await ticketRef.get();
+      if (ticketSnap.exists) {
+        final ticketData = ticketSnap.data();
+        final ticketUserId = ticketData?['userId'] as String? ?? '';
+        final subject = ticketData?['subject'] as String? ?? 'Support Ticket';
+        if (ticketUserId.isNotEmpty) {
+          final trimmedMsg = message.length > 80
+              ? '${message.substring(0, 80)}...'
+              : message;
+          batch.set(firestore.collection('notifications').doc(), {
+            'userId': ticketUserId,
+            'creatorUid': ticketUserId,
+            'type': 'support',
+            'category': 'support_reply',
+            'title': 'New reply on support ticket',
+            'message': 'Admin replied to "$subject": "$trimmedMsg"',
+            'targetId': ticketId,
+            'createdAt': FieldValue.serverTimestamp(),
+            'isRead': false,
+          });
+        }
+      }
+    }
 
     await batch.commit();
   }
