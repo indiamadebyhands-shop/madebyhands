@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -93,30 +95,38 @@ class _PortfolioBannerState extends State<_PortfolioBanner> {
 
   Future<void> _changeBannerImage(BuildContext context) async {
     final picker = ImagePicker();
-    final pickedFiles = await picker.pickMultiImage(
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
       imageQuality: kImageQuality,
       maxWidth: kProfileImageMaxSide,
       maxHeight: kProfileImageMaxSide,
     );
-    if (pickedFiles.isNotEmpty && context.mounted) {
-      final profile = widget.profile;
-      context.read<CreatorBloc>().add(
-            CreatorSubmitOnboarding(
-              uid: profile.uid,
-              name: profile.name,
-              bio: profile.bio,
-              location: profile.location,
-              state: profile.state,
-              socialLinks: List.of(profile.socialLinks),
-              portfolioImageFiles:
-                  pickedFiles.map((f) => File(f.path)).toList(),
-              existingPortfolioUrls: const [],
-              story: profile.story,
-              existingProfileImageUrl: profile.profileImage,
-              exhibitionImageFiles: const [],
-              existingExhibitionPictureUrls: profile.exhibitionPictures,
-            ),
-          );
+    if (pickedFile != null && context.mounted) {
+      final croppedFile = await showDialog<File>(
+        context: context,
+        builder: (_) => _BannerCropDialog(
+          imageFile: File(pickedFile.path),
+        ),
+      );
+      if (croppedFile != null && context.mounted) {
+        final profile = widget.profile;
+        context.read<CreatorBloc>().add(
+              CreatorSubmitOnboarding(
+                uid: profile.uid,
+                name: profile.name,
+                bio: profile.bio,
+                location: profile.location,
+                state: profile.state,
+                socialLinks: List.of(profile.socialLinks),
+                portfolioImageFiles: [croppedFile],
+                existingPortfolioUrls: const [],
+                story: profile.story,
+                existingProfileImageUrl: profile.profileImage,
+                exhibitionImageFiles: const [],
+                existingExhibitionPictureUrls: profile.exhibitionPictures,
+              ),
+            );
+      }
     }
   }
 
@@ -347,6 +357,470 @@ class _PortfolioBannerState extends State<_PortfolioBanner> {
       ],
     );
   }
+}
+
+class _BannerCropDialog extends StatefulWidget {
+  final File imageFile;
+
+  const _BannerCropDialog({required this.imageFile});
+
+  @override
+  State<_BannerCropDialog> createState() => _BannerCropDialogState();
+}
+
+class _BannerCropDialogState extends State<_BannerCropDialog> {
+  double _scale = 1.0;
+  double _baseScale = 1.0;
+  Offset _offset = Offset.zero;
+  Offset _baseOffset = Offset.zero;
+  Offset _startFocalPoint = Offset.zero;
+
+  ui.Image? _decodedSourceImage;
+  bool _isCropping = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSourceImage();
+  }
+
+  Future<void> _loadSourceImage() async {
+    try {
+      final bytes = kIsWeb
+          ? await XFile(widget.imageFile.path).readAsBytes()
+          : await widget.imageFile.readAsBytes();
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      if (mounted) {
+        setState(() {
+          _decodedSourceImage = frame.image;
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _resetPosition() {
+    setState(() {
+      _scale = 1.0;
+      _offset = Offset.zero;
+    });
+  }
+
+  Future<void> _saveAndConfirmCrop(double cropW, double cropH) async {
+    if (_decodedSourceImage == null) return;
+    setState(() => _isCropping = true);
+
+    try {
+      final srcImage = _decodedSourceImage!;
+      final double srcW = srcImage.width.toDouble();
+      final double srcH = srcImage.height.toDouble();
+      final double imageRatio = srcW / srcH;
+      const double targetRatio = 16 / 9;
+
+      double baseW, baseH;
+      if (imageRatio > targetRatio) {
+        baseH = cropH;
+        baseW = cropH * imageRatio;
+      } else {
+        baseW = cropW;
+        baseH = cropW / imageRatio;
+      }
+
+      final double currentW = baseW * _scale;
+      final double currentH = baseH * _scale;
+
+      final double cropLeftInScaled = (currentW - cropW) / 2 - _offset.dx;
+      final double cropTopInScaled = (currentH - cropH) / 2 - _offset.dy;
+
+      final double normX = (cropLeftInScaled / currentW).clamp(0.0, 1.0);
+      final double normY = (cropTopInScaled / currentH).clamp(0.0, 1.0);
+      final double normW = (cropW / currentW).clamp(0.0, 1.0);
+      final double normH = (cropH / currentH).clamp(0.0, 1.0);
+
+      final double srcCropX = normX * srcW;
+      final double srcCropY = normY * srcH;
+      final double srcCropW = (normW * srcW).clamp(1.0, srcW - srcCropX);
+      final double srcCropH = (normH * srcH).clamp(1.0, srcH - srcCropY);
+
+      const double outW = 1920.0;
+      const double outH = 1080.0;
+
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+
+      canvas.drawImageRect(
+        srcImage,
+        Rect.fromLTWH(srcCropX, srcCropY, srcCropW, srcCropH),
+        const Rect.fromLTWH(0, 0, outW, outH),
+        Paint()..filterQuality = FilterQuality.high,
+      );
+
+      final picture = recorder.endRecording();
+      final croppedUiImage =
+          await picture.toImage(outW.toInt(), outH.toInt());
+      final byteData =
+          await croppedUiImage.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) throw Exception('Crop failed');
+      final pngBytes = byteData.buffer.asUint8List();
+
+      final tempDir = Directory.systemTemp;
+      final croppedFile = File(
+        '${tempDir.path}/cropped_banner_${DateTime.now().millisecondsSinceEpoch}.png',
+      );
+      await croppedFile.writeAsBytes(pngBytes);
+
+      if (mounted) {
+        Navigator.pop(context, croppedFile);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isCropping = false);
+    }
+  }
+
+  Widget _buildCropFileImageWidget(
+    File file, {
+    required double width,
+    required double height,
+    BoxFit fit = BoxFit.cover,
+  }) {
+    if (kIsWeb) {
+      return Image.network(
+        file.path,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (context, error, stackTrace) =>
+            const Icon(Icons.broken_image, color: Colors.grey),
+      );
+    } else {
+      return Image.file(
+        file,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (context, error, stackTrace) =>
+            const Icon(Icons.broken_image, color: Colors.grey),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const double targetRatio = 16 / 9;
+
+    return Dialog.fullscreen(
+      backgroundColor: const Color(0xFFFAF6EE),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFFAF6EE),
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.close, color: Color(0xFF8B261D)),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: const Text(
+            'Crop Banner Image',
+            style: TextStyle(
+              color: Color(0xFF8B261D),
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          centerTitle: true,
+        ),
+        body: Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+              child: Text(
+                'Pan and zoom the image to fit inside the crop frame.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF8A8F82), fontSize: 13),
+              ),
+            ),
+            Expanded(
+              child: ClipRect(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    const double padding = 24.0;
+                    final double maxW = constraints.maxWidth - (padding * 2);
+                    final double maxH = constraints.maxHeight - (padding * 2);
+                    double cropW, cropH;
+                    if (maxW / maxH > targetRatio) {
+                      cropH = maxH;
+                      cropW = maxH * targetRatio;
+                    } else {
+                      cropW = maxW;
+                      cropH = maxW / targetRatio;
+                    }
+                    final cropRect = Rect.fromCenter(
+                      center: Offset(
+                        constraints.maxWidth / 2,
+                        constraints.maxHeight / 2,
+                      ),
+                      width: cropW,
+                      height: cropH,
+                    );
+
+                    double imageRatio = targetRatio;
+                    if (_decodedSourceImage != null) {
+                      imageRatio = _decodedSourceImage!.width /
+                          _decodedSourceImage!.height;
+                    }
+
+                    double baseW, baseH;
+                    if (imageRatio > targetRatio) {
+                      baseH = cropH;
+                      baseW = cropH * imageRatio;
+                    } else {
+                      baseW = cropW;
+                      baseH = cropW / imageRatio;
+                    }
+
+                    final double currentW = baseW * _scale;
+                    final double currentH = baseH * _scale;
+
+                    final double maxPanX = (currentW - cropW) / 2;
+                    final double maxPanY = (currentH - cropH) / 2;
+
+                    final double clampedDx =
+                        _offset.dx.clamp(-maxPanX, maxPanX);
+                    final double clampedDy =
+                        _offset.dy.clamp(-maxPanY, maxPanY);
+
+                    final effectiveOffset = Offset(clampedDx, clampedDy);
+
+                    return GestureDetector(
+                      onScaleStart: (details) {
+                        _baseScale = _scale;
+                        _baseOffset = _offset;
+                        _startFocalPoint = details.focalPoint;
+                      },
+                      onScaleUpdate: (details) {
+                        setState(() {
+                          final double newScale =
+                              (_baseScale * details.scale).clamp(1.0, 4.0);
+                          final Offset delta =
+                              details.focalPoint - _startFocalPoint;
+                          final Offset newOffset = _baseOffset + delta;
+
+                          final double curW = baseW * newScale;
+                          final double curH = baseH * newScale;
+                          final double maxPx = (curW - cropW) / 2;
+                          final double maxPy = (curH - cropH) / 2;
+
+                          _scale = newScale;
+                          _offset = Offset(
+                            newOffset.dx.clamp(-maxPx, maxPx),
+                            newOffset.dy.clamp(-maxPy, maxPy),
+                          );
+                        });
+                      },
+                      child: Stack(
+                        children: [
+                          Positioned.fill(
+                            child: Container(
+                              color: Colors.transparent,
+                              child: Center(
+                                child: Transform.translate(
+                                  offset: effectiveOffset,
+                                  child: SizedBox(
+                                    width: currentW,
+                                    height: currentH,
+                                    child: _buildCropFileImageWidget(
+                                      widget.imageFile,
+                                      width: currentW,
+                                      height: currentH,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: CustomPaint(
+                                painter: _BannerCropOverlayMaskPainter(
+                                  cropRect: cropRect,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20.0,
+                vertical: 16.0,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _resetPosition,
+                      icon: const Icon(
+                        Icons.refresh,
+                        color: Color(0xFF8B261D),
+                        size: 18,
+                      ),
+                      label: const Text(
+                        'Reset Position',
+                        style: TextStyle(
+                          color: Color(0xFF8B261D),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF8B261D)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return FilledButton.icon(
+                          onPressed:
+                              (_isCropping || _decodedSourceImage == null)
+                                  ? null
+                                  : () {
+                                      const double padding = 24.0;
+                                      final double maxW =
+                                          MediaQuery.of(context).size.width -
+                                              (padding * 2);
+                                      final double maxH =
+                                          MediaQuery.of(context).size.height *
+                                              0.5;
+                                      double cW, cH;
+                                      if (maxW / maxH > targetRatio) {
+                                        cH = maxH;
+                                        cW = maxH * targetRatio;
+                                      } else {
+                                        cW = maxW;
+                                        cH = maxW / targetRatio;
+                                      }
+                                      _saveAndConfirmCrop(cW, cH);
+                                    },
+                          icon: _isCropping
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.check, size: 18),
+                          label: const Text(
+                            'Save',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF8B261D),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BannerCropOverlayMaskPainter extends CustomPainter {
+  final Rect cropRect;
+
+  _BannerCropOverlayMaskPainter({required this.cropRect});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final backgroundPath = Path()
+      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+    final cutoutPath = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(cropRect, const Radius.circular(16.0)),
+      );
+
+    final overlayPath = Path.combine(
+      PathOperation.difference,
+      backgroundPath,
+      cutoutPath,
+    );
+
+    final paint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.55)
+      ..style = PaintingStyle.fill;
+
+    canvas.drawPath(overlayPath, paint);
+
+    final borderPaint = Paint()
+      ..color = const Color(0xFF8B261D)
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke;
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(cropRect, const Radius.circular(16.0)),
+      borderPaint,
+    );
+
+    final gridPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.8)
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+
+    final x1 = cropRect.left + cropRect.width / 3;
+    final x2 = cropRect.left + (cropRect.width / 3) * 2;
+    final y1 = cropRect.top + cropRect.height / 3;
+    final y2 = cropRect.top + (cropRect.height / 3) * 2;
+
+    canvas.drawLine(
+      Offset(x1, cropRect.top),
+      Offset(x1, cropRect.bottom),
+      gridPaint,
+    );
+    canvas.drawLine(
+      Offset(x2, cropRect.top),
+      Offset(x2, cropRect.bottom),
+      gridPaint,
+    );
+    canvas.drawLine(
+      Offset(cropRect.left, y1),
+      Offset(cropRect.right, y1),
+      gridPaint,
+    );
+    canvas.drawLine(
+      Offset(cropRect.left, y2),
+      Offset(cropRect.right, y2),
+      gridPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
 class _StorefrontCard extends StatelessWidget {
