@@ -45,12 +45,64 @@ class FirestoreSupportRepository implements SupportRepository {
   }
 
   @override
+  Future<List<SupportOrderReference>> getValidOrders({
+    required String userId,
+    required String userRole,
+  }) async {
+    final normalizedRole = userRole.trim().toLowerCase();
+    final ownerField = normalizedRole == 'creator' || normalizedRole == 'seller'
+        ? 'creatorId'
+        : 'buyerId';
+    final snapshot = await firestore
+        .collection('orders')
+        .where(ownerField, isEqualTo: userId)
+        .get();
+    final orders =
+        snapshot.docs
+            .where((document) => document.data()['isSample'] != true)
+            .map((document) {
+              final data = document.data();
+              final rawItems = data['items'] as List<dynamic>? ?? const [];
+              final itemSummaries = rawItems.whereType<Map>().map((raw) {
+                final item = Map<String, dynamic>.from(raw);
+                final name = item['name'] as String? ?? 'Handmade item';
+                final quantity = (item['quantity'] as num?)?.round() ?? 1;
+                return '$name × $quantity';
+              }).toList();
+              final subtotal =
+                  (data['subtotal'] as num?)?.round() ??
+                  (data['totalAmount'] as num?)?.round() ??
+                  (data['total'] as num?)?.round() ??
+                  0;
+              final total = normalizedRole == 'buyer'
+                  ? (data['buyerPayableAmount'] as num?)?.round() ?? subtotal
+                  : subtotal;
+              final createdAt = data['createdAt'];
+              return SupportOrderReference(
+                id: document.id,
+                createdAt: createdAt is Timestamp
+                    ? createdAt.toDate()
+                    : DateTime.fromMillisecondsSinceEpoch(0),
+                status: data['status'] as String? ?? 'Placed',
+                total: total,
+                itemSummaries: itemSummaries,
+              );
+            })
+            .where((order) => order.itemSummaries.isNotEmpty)
+            .toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return orders;
+  }
+
+  @override
   Future<String> createTicket({
     required String userId,
     required String userRole,
     required String userName,
     required String subject,
     required String message,
+    String type = 'general',
+    String? orderId,
   }) async {
     final ticket = _tickets.doc();
     final batch = firestore.batch();
@@ -60,7 +112,8 @@ class FirestoreSupportRepository implements SupportRepository {
       'userRole': userRole,
       'userName': userName,
       'subject': subject,
-      'type': 'general',
+      'type': type,
+      if (orderId != null && orderId.isNotEmpty) 'orderId': orderId,
       'status': 'open',
       'lastMessage': message,
       'createdAt': FieldValue.serverTimestamp(),
