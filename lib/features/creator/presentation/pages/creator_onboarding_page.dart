@@ -129,6 +129,7 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
         builder: (_) => _ImageCropPreviewDialog(
           imageFile: File(pickedFile.path),
           aspectRatio: 1.0,
+          isCircle: true,
           title: 'Crop Profile Picture',
         ),
       );
@@ -958,11 +959,13 @@ class _OnboardingHeader extends StatelessWidget {
 class _ImageCropPreviewDialog extends StatefulWidget {
   final File imageFile;
   final double aspectRatio;
+  final bool isCircle;
   final String title;
 
   const _ImageCropPreviewDialog({
     required this.imageFile,
     required this.aspectRatio,
+    this.isCircle = false,
     required this.title,
   });
 
@@ -1081,7 +1084,7 @@ class _ImageCropPreviewDialogState extends State<_ImageCropPreviewDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final isCircle = widget.aspectRatio == 1.0;
+    final isCircle = widget.isCircle;
 
     return BuyerBackground(
       child: Scaffold(
@@ -1114,8 +1117,9 @@ class _ImageCropPreviewDialogState extends State<_ImageCropPreviewDialog> {
               ),
             ),
             Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
+              child: ClipRect(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
                   const double padding = 24.0;
                   final double maxW = constraints.maxWidth - (padding * 2);
                   final double maxH = constraints.maxHeight - (padding * 2);
@@ -1226,6 +1230,7 @@ class _ImageCropPreviewDialogState extends State<_ImageCropPreviewDialog> {
                 },
               ),
             ),
+          ),
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: 20.0,
