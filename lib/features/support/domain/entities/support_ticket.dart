@@ -39,3 +39,24 @@ class SupportMessage {
     required this.createdAt,
   });
 }
+
+/// Minimal order information safe to attach to a support conversation.
+class SupportOrderReference {
+  final String id;
+  final DateTime createdAt;
+  final String status;
+  final int total;
+  final List<String> itemSummaries;
+
+  const SupportOrderReference({
+    required this.id,
+    required this.createdAt,
+    required this.status,
+    required this.total,
+    required this.itemSummaries,
+  });
+
+  String get shortId => id.length > 8
+      ? id.substring(id.length - 8).toUpperCase()
+      : id.toUpperCase();
+}
