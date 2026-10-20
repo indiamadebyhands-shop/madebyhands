@@ -92,7 +92,10 @@ class _BuyerNotificationsPageState extends State<BuyerNotificationsPage> {
                                 size: 20,
                                 notification.type == BuyerNotificationType.order
                                     ? Icons.local_shipping_outlined
-                                    : Icons.new_releases_outlined,
+                                    : notification.type ==
+                                            BuyerNotificationType.support
+                                        ? Icons.support_agent_outlined
+                                        : Icons.new_releases_outlined,
                               ),
                             ),
                             const SizedBox(width: 12),

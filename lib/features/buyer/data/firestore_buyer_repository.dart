@@ -270,6 +270,32 @@ class FirestoreBuyerRepository implements BuyerRepository {
     return controller.stream;
   }
 
+  Stream<List<BuyerProductNotification>> watchSupportNotifications(
+    String userId,
+  ) {
+    return firestore
+        .collection('notifications')
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) {
+      final list = snapshot.docs.map((doc) {
+        final data = doc.data();
+        final title = data['title'] as String? ?? 'Support Update';
+        final message = data['message'] as String? ?? '';
+        final createdAt =
+            (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+        return BuyerProductNotification.support(
+          id: doc.id,
+          title: title,
+          message: message,
+          publishedAt: createdAt,
+        );
+      }).toList();
+      list.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
+      return list;
+    });
+  }
+
   @override
   Stream<List<BuyerProductNotification>> watchBuyerNotifications(
     String userId,
@@ -277,11 +303,13 @@ class FirestoreBuyerRepository implements BuyerRepository {
     late final StreamController<List<BuyerProductNotification>> controller;
     StreamSubscription<List<BuyerProductNotification>>? productSubscription;
     StreamSubscription<List<BuyerOrder>>? orderSubscription;
+    StreamSubscription<List<BuyerProductNotification>>? supportSubscription;
     List<BuyerProductNotification> products = const [];
     List<BuyerProductNotification> orders = const [];
+    List<BuyerProductNotification> supports = const [];
 
     void emit() {
-      final combined = [...products, ...orders]
+      final combined = [...products, ...orders, ...supports]
         ..sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
       if (!controller.isClosed) controller.add(combined);
     }
@@ -313,10 +341,17 @@ class FirestoreBuyerRepository implements BuyerRepository {
               .toList();
           emit();
         }, onError: controller.addError);
+        supportSubscription = watchSupportNotifications(userId).listen((
+          value,
+        ) {
+          supports = value;
+          emit();
+        }, onError: controller.addError);
       },
       onCancel: () async {
         await productSubscription?.cancel();
         await orderSubscription?.cancel();
+        await supportSubscription?.cancel();
       },
     );
     return controller.stream;

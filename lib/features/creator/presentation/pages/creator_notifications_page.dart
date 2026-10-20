@@ -228,6 +228,7 @@ IconData _iconFor(String type) => switch (type) {
   'verification' => Icons.verified_outlined,
   'product' => Icons.inventory_2_outlined,
   'announcement' => Icons.campaign_outlined,
+  'support' => Icons.support_agent_outlined,
   _ => Icons.notifications_outlined,
 };
 
@@ -236,6 +237,7 @@ Color _colorFor(String type) => switch (type) {
   'verification' => Colors.green,
   'product' => Colors.orange,
   'announcement' => Colors.purple,
+  'support' => Colors.blue,
   _ => AppColors.accent,
 };
 
