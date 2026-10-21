@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:madebyhands/core/services/notification_messaging_service.dart';
 import 'package:madebyhands/core/theme/app_theme.dart';
 import 'package:madebyhands/features/admin/presentation/bloc/admin_bloc.dart';
 import 'package:madebyhands/features/admin/presentation/bloc/admin_cubit.dart';
@@ -101,6 +102,31 @@ class _MyAppState extends State<MyApp> {
   }
 
   Widget _homeFor(BuildContext context, UserEntity user) {
+    NotificationMessagingService.instance.initialize(
+      userId: user.uid,
+      onNotificationTap: (data) {
+        final category = data['category'] as String?;
+        if (user.isAdminOrManager) {
+          int? section;
+          if (category == 'creator_verification' || category == 'verification') {
+            section = 1;
+          } else if (category == 'product_approval' || category == 'product') {
+            section = 2;
+          } else if (category == 'order_rejected' || category == 'order') {
+            section = 4;
+          } else if (category == 'support_ticket' ||
+              category == 'support' ||
+              category == 'support_reply' ||
+              category == 'support_resolved') {
+            section = 6;
+          }
+          if (section != null) {
+            context.read<AdminCubit>().changePage(section);
+          }
+        }
+      },
+    );
+
     if (user.isSuspended) return const _SuspendedScreen();
     if (user.isAdminOrManager) return AdminDashboardPage(key: ValueKey(user.uid));
     if (user.isCreator) {
