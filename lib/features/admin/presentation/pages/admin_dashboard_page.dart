@@ -379,7 +379,7 @@ class _AdminNotificationBellState extends State<_AdminNotificationBell> {
     'creator_verification' || 'verification' => 1,
     'product_approval' || 'product' => 2,
     'order_rejected' || 'order' => 4,
-    'support_ticket' || 'support' => 6,
+    'support_ticket' || 'support' || 'support_reply' || 'support_resolved' => 6,
     _ => null,
   };
 
