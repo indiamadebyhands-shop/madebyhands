@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:madebyhands/core/services/notification_messaging_service.dart';
 import 'package:madebyhands/features/support/data/models/support_message_model.dart';
 import 'package:madebyhands/features/support/data/models/support_ticket_model.dart';
 import 'package:madebyhands/features/support/domain/entities/support_ticket.dart';
@@ -125,12 +126,17 @@ class FirestoreSupportRepository implements SupportRepository {
       'message': message,
       'createdAt': FieldValue.serverTimestamp(),
     });
+
+    final adminMsg =
+        '${userName.isNotEmpty ? userName : 'A user'} ($userRole) raised a ticket: "$subject"';
+    final userMsg =
+        'Your support ticket "$subject" has been successfully created.';
+
     batch.set(firestore.collection('notifications').doc(), {
       'type': 'admin',
       'category': 'support_ticket',
       'title': 'New support ticket',
-      'message':
-          '${userName.isNotEmpty ? userName : 'A user'} ($userRole) raised a ticket: "$subject"',
+      'message': adminMsg,
       'targetId': ticket.id,
       'ticketId': ticket.id,
       'createdAt': FieldValue.serverTimestamp(),
@@ -142,8 +148,7 @@ class FirestoreSupportRepository implements SupportRepository {
       'type': 'support',
       'category': 'support_ticket',
       'title': 'Support ticket created',
-      'message':
-          'Your support ticket "$subject" has been successfully created.',
+      'message': userMsg,
       'targetId': ticket.id,
       'ticketId': ticket.id,
       'createdAt': FieldValue.serverTimestamp(),
@@ -151,6 +156,22 @@ class FirestoreSupportRepository implements SupportRepository {
     });
 
     await batch.commit();
+
+    NotificationMessagingService.sendPushNotification(
+      targetUserId: 'admin',
+      title: 'New support ticket',
+      message: adminMsg,
+      category: 'support_ticket',
+      targetId: ticket.id,
+    );
+    NotificationMessagingService.sendPushNotification(
+      targetUserId: userId,
+      title: 'Support ticket created',
+      message: userMsg,
+      category: 'support_ticket',
+      targetId: ticket.id,
+    );
+
     return ticket.id;
   }
 
@@ -188,31 +209,49 @@ class FirestoreSupportRepository implements SupportRepository {
 
       if (senderRole == 'admin') {
         if (ticketUserId.isNotEmpty) {
+          final replyMsg = 'Admin replied to "$subject": "$trimmedMsg"';
           batch.set(firestore.collection('notifications').doc(), {
             'userId': ticketUserId,
             'creatorUid': ticketUserId,
             'type': 'support',
             'category': 'support_reply',
             'title': 'New reply on support ticket',
-            'message': 'Admin replied to "$subject": "$trimmedMsg"',
+            'message': replyMsg,
             'targetId': ticketId,
             'ticketId': ticketId,
             'createdAt': FieldValue.serverTimestamp(),
             'isRead': false,
           });
+
+          NotificationMessagingService.sendPushNotification(
+            targetUserId: ticketUserId,
+            title: 'New reply on support ticket',
+            message: replyMsg,
+            category: 'support_reply',
+            targetId: ticketId,
+          );
         }
       } else {
+        final replyMsg =
+            '${userName.isNotEmpty ? userName : 'A user'} ($userRole) replied to "$subject": "$trimmedMsg"';
         batch.set(firestore.collection('notifications').doc(), {
           'type': 'admin',
           'category': 'support_reply',
           'title': 'New reply on support ticket',
-          'message':
-              '${userName.isNotEmpty ? userName : 'A user'} ($userRole) replied to "$subject": "$trimmedMsg"',
+          'message': replyMsg,
           'targetId': ticketId,
           'ticketId': ticketId,
           'createdAt': FieldValue.serverTimestamp(),
           'isRead': false,
         });
+
+        NotificationMessagingService.sendPushNotification(
+          targetUserId: 'admin',
+          title: 'New reply on support ticket',
+          message: replyMsg,
+          category: 'support_reply',
+          targetId: ticketId,
+        );
       }
     }
 
@@ -237,6 +276,11 @@ class FirestoreSupportRepository implements SupportRepository {
       final userRole = ticketData?['userRole'] as String? ?? 'user';
       final subject = ticketData?['subject'] as String? ?? 'Support Ticket';
 
+      final userResolvedMsg =
+          'Your support ticket "$subject" has been closed by support.';
+      final adminResolvedMsg =
+          'Ticket "$subject" raised by ${userName.isNotEmpty ? userName : 'A user'} ($userRole) has been closed.';
+
       if (ticketUserId.isNotEmpty) {
         batch.set(firestore.collection('notifications').doc(), {
           'userId': ticketUserId,
@@ -244,26 +288,40 @@ class FirestoreSupportRepository implements SupportRepository {
           'type': 'support',
           'category': 'support_resolved',
           'title': 'Support ticket resolved',
-          'message':
-              'Your support ticket "$subject" has been closed by support.',
+          'message': userResolvedMsg,
           'targetId': ticketId,
           'ticketId': ticketId,
           'createdAt': FieldValue.serverTimestamp(),
           'isRead': false,
         });
+
+        NotificationMessagingService.sendPushNotification(
+          targetUserId: ticketUserId,
+          title: 'Support ticket resolved',
+          message: userResolvedMsg,
+          category: 'support_resolved',
+          targetId: ticketId,
+        );
       }
 
       batch.set(firestore.collection('notifications').doc(), {
         'type': 'admin',
         'category': 'support_resolved',
         'title': 'Support ticket closed',
-        'message':
-            'Ticket "$subject" raised by ${userName.isNotEmpty ? userName : 'A user'} ($userRole) has been closed.',
+        'message': adminResolvedMsg,
         'targetId': ticketId,
         'ticketId': ticketId,
         'createdAt': FieldValue.serverTimestamp(),
         'isRead': false,
       });
+
+      NotificationMessagingService.sendPushNotification(
+        targetUserId: 'admin',
+        title: 'Support ticket closed',
+        message: adminResolvedMsg,
+        category: 'support_resolved',
+        targetId: ticketId,
+      );
     }
 
     await batch.commit();
