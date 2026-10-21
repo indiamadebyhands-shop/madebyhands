@@ -132,6 +132,7 @@ class FirestoreSupportRepository implements SupportRepository {
       'message':
           '${userName.isNotEmpty ? userName : 'A user'} ($userRole) raised a ticket: "$subject"',
       'targetId': ticket.id,
+      'ticketId': ticket.id,
       'createdAt': FieldValue.serverTimestamp(),
       'isRead': false,
     });
@@ -144,6 +145,7 @@ class FirestoreSupportRepository implements SupportRepository {
       'message':
           'Your support ticket "$subject" has been successfully created.',
       'targetId': ticket.id,
+      'ticketId': ticket.id,
       'createdAt': FieldValue.serverTimestamp(),
       'isRead': false,
     });
@@ -173,16 +175,19 @@ class FirestoreSupportRepository implements SupportRepository {
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
-    if (senderRole == 'admin') {
-      final ticketSnap = await ticketRef.get();
-      if (ticketSnap.exists) {
-        final ticketData = ticketSnap.data();
-        final ticketUserId = ticketData?['userId'] as String? ?? '';
-        final subject = ticketData?['subject'] as String? ?? 'Support Ticket';
+    final ticketSnap = await ticketRef.get();
+    if (ticketSnap.exists) {
+      final ticketData = ticketSnap.data();
+      final ticketUserId = ticketData?['userId'] as String? ?? '';
+      final userName = ticketData?['userName'] as String? ?? 'User';
+      final userRole = ticketData?['userRole'] as String? ?? 'user';
+      final subject = ticketData?['subject'] as String? ?? 'Support Ticket';
+      final trimmedMsg = message.length > 80
+          ? '${message.substring(0, 80)}...'
+          : message;
+
+      if (senderRole == 'admin') {
         if (ticketUserId.isNotEmpty) {
-          final trimmedMsg = message.length > 80
-              ? '${message.substring(0, 80)}...'
-              : message;
           batch.set(firestore.collection('notifications').doc(), {
             'userId': ticketUserId,
             'creatorUid': ticketUserId,
@@ -191,10 +196,23 @@ class FirestoreSupportRepository implements SupportRepository {
             'title': 'New reply on support ticket',
             'message': 'Admin replied to "$subject": "$trimmedMsg"',
             'targetId': ticketId,
+            'ticketId': ticketId,
             'createdAt': FieldValue.serverTimestamp(),
             'isRead': false,
           });
         }
+      } else {
+        batch.set(firestore.collection('notifications').doc(), {
+          'type': 'admin',
+          'category': 'support_reply',
+          'title': 'New reply on support ticket',
+          'message':
+              '${userName.isNotEmpty ? userName : 'A user'} ($userRole) replied to "$subject": "$trimmedMsg"',
+          'targetId': ticketId,
+          'ticketId': ticketId,
+          'createdAt': FieldValue.serverTimestamp(),
+          'isRead': false,
+        });
       }
     }
 
@@ -202,8 +220,52 @@ class FirestoreSupportRepository implements SupportRepository {
   }
 
   @override
-  Future<void> resolveTicket(String ticketId) => _tickets.doc(ticketId).update({
-    'status': 'resolved',
-    'updatedAt': FieldValue.serverTimestamp(),
-  });
+  Future<void> resolveTicket(String ticketId) async {
+    final ticketRef = _tickets.doc(ticketId);
+    final batch = firestore.batch();
+
+    batch.update(ticketRef, {
+      'status': 'resolved',
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    final ticketSnap = await ticketRef.get();
+    if (ticketSnap.exists) {
+      final ticketData = ticketSnap.data();
+      final ticketUserId = ticketData?['userId'] as String? ?? '';
+      final userName = ticketData?['userName'] as String? ?? 'User';
+      final userRole = ticketData?['userRole'] as String? ?? 'user';
+      final subject = ticketData?['subject'] as String? ?? 'Support Ticket';
+
+      if (ticketUserId.isNotEmpty) {
+        batch.set(firestore.collection('notifications').doc(), {
+          'userId': ticketUserId,
+          'creatorUid': ticketUserId,
+          'type': 'support',
+          'category': 'support_resolved',
+          'title': 'Support ticket resolved',
+          'message':
+              'Your support ticket "$subject" has been closed by support.',
+          'targetId': ticketId,
+          'ticketId': ticketId,
+          'createdAt': FieldValue.serverTimestamp(),
+          'isRead': false,
+        });
+      }
+
+      batch.set(firestore.collection('notifications').doc(), {
+        'type': 'admin',
+        'category': 'support_resolved',
+        'title': 'Support ticket closed',
+        'message':
+            'Ticket "$subject" raised by ${userName.isNotEmpty ? userName : 'A user'} ($userRole) has been closed.',
+        'targetId': ticketId,
+        'ticketId': ticketId,
+        'createdAt': FieldValue.serverTimestamp(),
+        'isRead': false,
+      });
+    }
+
+    await batch.commit();
+  }
 }
