@@ -9,6 +9,8 @@ class UserModel extends UserEntity {
     required super.role,
     super.isVerified = false,
     super.isSuspended = false,
+    super.creatorModerationLevel = 0,
+    super.creatorModerationReason = '',
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,9 @@ class UserModel extends UserEntity {
       role: json['role'] as String? ?? 'buyer',
       isVerified: json['isVerified'] as bool? ?? false,
       isSuspended: json['isSuspended'] as bool? ?? false,
+      creatorModerationLevel:
+          (json['creatorModerationLevel'] as num?)?.toInt() ?? 0,
+      creatorModerationReason: json['creatorModerationReason'] as String? ?? '',
     );
   }
 
@@ -32,6 +37,8 @@ class UserModel extends UserEntity {
       'role': role,
       'isVerified': isVerified,
       'isSuspended': isSuspended,
+      'creatorModerationLevel': creatorModerationLevel,
+      'creatorModerationReason': creatorModerationReason,
     };
   }
 
@@ -43,6 +50,8 @@ class UserModel extends UserEntity {
     String? role,
     bool? isVerified,
     bool? isSuspended,
+    int? creatorModerationLevel,
+    String? creatorModerationReason,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -52,6 +61,10 @@ class UserModel extends UserEntity {
       role: role ?? this.role,
       isVerified: isVerified ?? this.isVerified,
       isSuspended: isSuspended ?? this.isSuspended,
+      creatorModerationLevel:
+          creatorModerationLevel ?? this.creatorModerationLevel,
+      creatorModerationReason:
+          creatorModerationReason ?? this.creatorModerationReason,
     );
   }
 }

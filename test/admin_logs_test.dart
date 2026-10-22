@@ -73,10 +73,12 @@ class _FakeAdminRepository implements AdminRepository {
   ) async => _result(null);
 
   @override
-  Future<Either<Failure, void>> suspendUser(
-    String uid,
-    bool isSuspended,
-  ) async => _result(null);
+  Future<Either<Failure, void>> setUserModeration({
+    required String uid,
+    required int level,
+    required String reason,
+    bool immediate = false,
+  }) async => _result(null);
 
   @override
   Future<Either<Failure, void>> approveCreator(String uid) async =>
@@ -261,21 +263,47 @@ void main() {
       bloc.add(
         const AdminSuspendUserRequested(
           'u1',
-          true,
+          3,
+          reason: 'Policy violation',
           userLabel: 'Ravi (ravi@example.com)',
         ),
       );
       await settle();
-      bloc.add(const AdminSuspendUserRequested('u1', false));
+      bloc.add(const AdminSuspendUserRequested('u1', 0));
       await settle();
 
       expect(
         logs.entries.first.summary,
-        'Suspended user Ravi (ravi@example.com).',
+        'Finally suspended user Ravi (ravi@example.com): Policy violation',
       );
-      expect(logs.entries.last.summary, 'Reinstated user u1.');
+      expect(
+        logs.entries.last.summary,
+        'Cleared warnings and reinstated user u1.',
+      );
       expect(logs.entries.first.targetId, 'u1');
     });
+
+    test(
+      'an immediate suspension is distinguished from staged warnings',
+      () async {
+        bloc.add(
+          const AdminSuspendUserRequested(
+            'c1',
+            3,
+            reason: 'Severe policy violation',
+            immediate: true,
+            userLabel: 'Asha Rao',
+          ),
+        );
+        await settle();
+
+        expect(logs.entries.single.action, 'user.suspended.immediate');
+        expect(
+          logs.entries.single.summary,
+          'Immediately suspended user Asha Rao: Severe policy violation',
+        );
+      },
+    );
 
     test('product decisions include the product and the reason', () async {
       bloc.add(

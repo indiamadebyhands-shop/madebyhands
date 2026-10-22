@@ -144,26 +144,36 @@ class _UserManagementViewState extends State<UserManagementView>
               stream: _users,
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  return Center(child: Text('Could not load users: ${snapshot.error}'));
+                  return Center(
+                    child: Text('Could not load users: ${snapshot.error}'),
+                  );
                 }
                 if (!snapshot.hasData) {
                   return const Center(
                     child: CircularProgressIndicator(color: AppColors.primary),
                   );
                 }
-                final users = snapshot.data!.docs.map((doc) {
-                  final data = doc.data();
-                  return UserEntity(
-                    uid: doc.id,
-                    email: data['email'] as String? ?? '',
-                    name: data['name'] as String? ?? '',
-                    phone: data['phone'] as String? ?? '',
-                    role: data['role'] as String? ?? 'buyer',
-                    isVerified: data['isVerified'] as bool? ?? false,
-                    isSuspended: data['isSuspended'] as bool? ?? false,
-                  );
-                }).toList()
-                  ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+                final users =
+                    snapshot.data!.docs.map((doc) {
+                      final data = doc.data();
+                      return UserEntity(
+                        uid: doc.id,
+                        email: data['email'] as String? ?? '',
+                        name: data['name'] as String? ?? '',
+                        phone: data['phone'] as String? ?? '',
+                        role: data['role'] as String? ?? 'buyer',
+                        isVerified: data['isVerified'] as bool? ?? false,
+                        isSuspended: data['isSuspended'] as bool? ?? false,
+                        creatorModerationLevel:
+                            (data['creatorModerationLevel'] as num?)?.toInt() ??
+                            0,
+                        creatorModerationReason:
+                            data['creatorModerationReason'] as String? ?? '',
+                      );
+                    }).toList()..sort(
+                      (a, b) =>
+                          a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+                    );
 
                 final buyers = users
                     .where((u) => !u.isCreator && !u.isAdminOrManager)
@@ -186,7 +196,8 @@ class _UserManagementViewState extends State<UserManagementView>
                     ),
                     _UserList(
                       users: creators,
-                      emptyMessage: _searchQuery.isEmpty &&
+                      emptyMessage:
+                          _searchQuery.isEmpty &&
                               _creatorFilter == _VerifiedFilter.all
                           ? 'No creators registered yet.'
                           : 'No creators match the current search/filter.',
@@ -212,7 +223,10 @@ class _UserList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (users.isEmpty) {
       return Center(
-        child: Text(emptyMessage, style: const TextStyle(color: AppColors.mutedText)),
+        child: Text(
+          emptyMessage,
+          style: const TextStyle(color: AppColors.mutedText),
+        ),
       );
     }
     return ListView.builder(
@@ -233,7 +247,11 @@ class _UserTile extends StatelessWidget {
     final isCreator = user.isCreator;
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
-      color: user.isSuspended ? Colors.red.shade50 : AppColors.surface,
+      color: user.isSuspended
+          ? Colors.red.shade50
+          : user.creatorModerationLevel > 0
+          ? Colors.amber.shade50
+          : AppColors.surface,
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         onTap: () => _viewProfile(context),
@@ -254,7 +272,10 @@ class _UserTile extends StatelessWidget {
                 user.name.isEmpty ? 'Unnamed user' : user.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
             ),
             if (user.isVerified)
@@ -267,10 +288,25 @@ class _UserTile extends StatelessWidget {
                 padding: EdgeInsets.only(left: 6),
                 child: Icon(Icons.block, size: 16, color: Colors.red),
               ),
+            if (!user.isSuspended && user.creatorModerationLevel > 0)
+              Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: Icon(
+                  Icons.warning_amber_rounded,
+                  size: 18,
+                  color: user.creatorModerationLevel == 1
+                      ? Colors.amber.shade800
+                      : Colors.red.shade700,
+                ),
+              ),
           ],
         ),
         subtitle: Text(
-          user.isSuspended ? '${user.email}\nSuspended' : user.email,
+          user.isSuspended
+              ? '${user.email}\nFinal suspension'
+              : user.creatorModerationLevel > 0
+              ? '${user.email}\nWarning ${user.creatorModerationLevel} issued'
+              : user.email,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 12, color: AppColors.mutedText),
@@ -279,21 +315,52 @@ class _UserTile extends StatelessWidget {
           tooltip: 'Actions',
           itemBuilder: (context) => [
             const PopupMenuItem(value: 'view', child: Text('View profile')),
-            PopupMenuItem(
-              value: 'suspend',
-              child: Text(
-                user.isSuspended ? 'Reinstate user' : 'Suspend user',
-                style: TextStyle(
-                  color: user.isSuspended ? Colors.green : Colors.redAccent,
+            if (user.isSuspended)
+              const PopupMenuItem(
+                value: 'clear',
+                child: Text(
+                  'Reinstate user',
+                  style: TextStyle(color: Colors.green),
+                ),
+              )
+            else ...[
+              if (user.isCreator)
+                PopupMenuItem(
+                  value: 'staged',
+                  child: Text(switch (user.creatorModerationLevel) {
+                    0 => 'Start staged warnings',
+                    1 => 'Send second warning',
+                    _ => 'Apply final-stage suspension',
+                  }),
+                ),
+              const PopupMenuItem(
+                value: 'suspend_now',
+                child: Text(
+                  'Suspend immediately',
+                  style: TextStyle(color: Colors.redAccent),
                 ),
               ),
-            ),
+            ],
+            if (user.isCreator &&
+                !user.isSuspended &&
+                user.creatorModerationLevel > 0)
+              const PopupMenuItem(
+                value: 'clear',
+                child: Text(
+                  'Clear warning',
+                  style: TextStyle(color: Colors.green),
+                ),
+              ),
           ],
           onSelected: (value) {
             if (value == 'view') {
               _viewProfile(context);
+            } else if (value == 'clear') {
+              _confirmClearModeration(context);
+            } else if (value == 'suspend_now') {
+              _confirmModeration(context, immediate: true);
             } else {
-              _confirmSuspend(context);
+              _confirmModeration(context);
             }
           },
         ),
@@ -301,17 +368,110 @@ class _UserTile extends StatelessWidget {
     );
   }
 
-  Future<void> _confirmSuspend(BuildContext context) async {
+  Future<void> _confirmModeration(
+    BuildContext context, {
+    bool immediate = false,
+  }) async {
     final adminBloc = context.read<AdminBloc>();
-    final suspend = !user.isSuspended;
+    if (user.isSuspended) {
+      await _confirmClearModeration(context);
+      return;
+    }
+    final level = immediate
+        ? 3
+        : user.isCreator
+        ? (user.creatorModerationLevel >= 2
+              ? 3
+              : user.creatorModerationLevel + 1)
+        : 3;
+    var typedReason = '';
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          scrollable: true,
+          title: Text(
+            immediate
+                ? 'Suspend ${user.name} immediately?'
+                : user.isCreator
+                ? switch (level) {
+                    1 => 'Send first warning?',
+                    2 => 'Send second warning?',
+                    _ => 'Apply final suspension?',
+                  }
+                : 'Suspend ${user.name}?',
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                immediate
+                    ? 'This skips all warning stages. The account will be disabled immediately, the user will be signed out, and any creator storefront and products will be hidden.'
+                    : switch (level) {
+                        1 =>
+                          'The creator will see a yellow warning and have 24 hours to resolve the issue.',
+                        2 =>
+                          'The creator will see a red warning. Their storefront and products will be hidden, and adding products will be blocked.',
+                        _ =>
+                          'The account email will be disabled and the user will be signed out.',
+                      },
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                autofocus: true,
+                maxLines: 3,
+                onChanged: (value) => setDialogState(() {
+                  typedReason = value;
+                }),
+                decoration: const InputDecoration(
+                  labelText: 'Reason',
+                  hintText: 'Explain what needs to be resolved',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: typedReason.trim().isEmpty
+                  ? null
+                  : () => Navigator.pop(dialogContext, typedReason.trim()),
+              style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+              child: Text(level < 3 ? 'Send' : 'Suspend'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (reason != null) {
+      adminBloc.add(
+        AdminSuspendUserRequested(
+          user.uid,
+          level,
+          reason: reason,
+          immediate: immediate,
+          userLabel: user.name.trim().isEmpty
+              ? user.email
+              : '${user.name} (${user.email})',
+        ),
+      );
+    }
+  }
+
+  Future<void> _confirmClearModeration(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(suspend ? 'Suspend ${user.name}?' : 'Reinstate ${user.name}?'),
+        title: Text(user.isSuspended ? 'Reinstate user?' : 'Clear warning?'),
         content: Text(
-          suspend
-              ? 'They will be signed out of the marketplace and cannot buy or sell until reinstated.'
-              : 'They will regain access to the marketplace.',
+          user.isSuspended
+              ? 'Their email account will be enabled again. Previously hidden products will remain unpublished until the creator republishes them.'
+              : 'The warning will be removed and the storefront will be visible again. Previously hidden products will remain unpublished.',
         ),
         actions: [
           TextButton(
@@ -320,20 +480,19 @@ class _UserTile extends StatelessWidget {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            style: suspend
-                ? FilledButton.styleFrom(backgroundColor: Colors.redAccent)
-                : null,
-            child: Text(suspend ? 'Suspend' : 'Reinstate'),
+            child: Text(user.isSuspended ? 'Reinstate' : 'Clear'),
           ),
         ],
       ),
     );
-    if (confirmed == true) {
-      adminBloc.add(
+    if (confirmed == true && context.mounted) {
+      context.read<AdminBloc>().add(
         AdminSuspendUserRequested(
           user.uid,
-          suspend,
-          userLabel: user.name.trim().isEmpty ? user.email : '${user.name} (${user.email})',
+          0,
+          userLabel: user.name.trim().isEmpty
+              ? user.email
+              : '${user.name} (${user.email})',
         ),
       );
     }
@@ -351,7 +510,11 @@ class _UserTile extends StatelessWidget {
         final data = doc.data();
         if (data == null) {
           messenger.showSnackBar(
-            SnackBar(content: Text('${user.name} has not set up a creator profile yet.')),
+            SnackBar(
+              content: Text(
+                '${user.name} has not set up a creator profile yet.',
+              ),
+            ),
           );
           return;
         }
@@ -363,7 +526,9 @@ class _UserTile extends StatelessWidget {
           ),
         );
       } catch (error) {
-        messenger.showSnackBar(SnackBar(content: Text(friendlyErrorMessage(error))));
+        messenger.showSnackBar(
+          SnackBar(content: Text(friendlyErrorMessage(error))),
+        );
       }
       return;
     }
@@ -387,8 +552,14 @@ class _UserTile extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            _detail(Icons.email_outlined, user.email.isEmpty ? 'No email' : user.email),
-            _detail(Icons.phone_outlined, user.phone.isEmpty ? 'No phone number' : user.phone),
+            _detail(
+              Icons.email_outlined,
+              user.email.isEmpty ? 'No email' : user.email,
+            ),
+            _detail(
+              Icons.phone_outlined,
+              user.phone.isEmpty ? 'No phone number' : user.phone,
+            ),
             _detail(Icons.badge_outlined, user.roleDisplay),
             _detail(
               user.isSuspended ? Icons.block : Icons.check_circle_outline,

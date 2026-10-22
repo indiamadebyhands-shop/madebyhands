@@ -15,18 +15,28 @@ final class AdminCategoriesRequested extends AdminEvent {}
 
 final class AdminSuspendUserRequested extends AdminEvent {
   final String uid;
-  final bool isSuspended;
+  final int moderationLevel;
+  final String reason;
+  final bool immediate;
 
   /// Name or email of the user, for the activity log only.
   final String userLabel;
   const AdminSuspendUserRequested(
     this.uid,
-    this.isSuspended, {
+    this.moderationLevel, {
+    this.reason = '',
+    this.immediate = false,
     this.userLabel = '',
   });
 
   @override
-  List<Object> get props => [uid, isSuspended, userLabel];
+  List<Object> get props => [
+    uid,
+    moderationLevel,
+    reason,
+    immediate,
+    userLabel,
+  ];
 }
 
 final class AdminApproveCreatorRequested extends AdminEvent {

@@ -16,6 +16,11 @@ abstract interface class AdminRemoteDataSource {
   Future<void> addCategory(String name);
   Future<void> deleteCategory(String name);
   Future<List<String>> resetCategoriesToDefaults();
+  Future<void> setModerationState({
+    required String uid,
+    required int level,
+    required String reason,
+  });
   Future<void> reviewProduct({
     required String productId,
     required bool approve,
@@ -37,7 +42,11 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
         .doc('platform_economics')
         .get();
     return doc.data() ??
-        const {'flatFee': 50.0, 'percentFee': 5.0, 'commissionThreshold': 999.0};
+        const {
+          'flatFee': 50.0,
+          'percentFee': 5.0,
+          'commissionThreshold': 999.0,
+        };
   }
 
   @override
@@ -124,11 +133,12 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
   Future<List<String>> getCategories({bool seedDefaults = false}) async {
     final snapshot = await firestore.collection('categories').get();
     if (snapshot.docs.isNotEmpty) {
-      final names = snapshot.docs
-          .map((doc) => doc.data()['name'] as String? ?? doc.id)
-          .where((name) => name.trim().isNotEmpty)
-          .toList()
-        ..sort();
+      final names =
+          snapshot.docs
+              .map((doc) => doc.data()['name'] as String? ?? doc.id)
+              .where((name) => name.trim().isNotEmpty)
+              .toList()
+            ..sort();
       return names;
     }
     if (seedDefaults) {
@@ -188,6 +198,67 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
     return List<String>.from(kProductCategories);
   }
 
+  /// Persists the creator-facing warning state with the admin's existing
+  /// Firestore permissions. Final Auth disabling still happens server-side.
+  @override
+  Future<void> setModerationState({
+    required String uid,
+    required int level,
+    required String reason,
+  }) async {
+    if (![0, 1, 2, 3].contains(level)) {
+      throw ArgumentError.value(level, 'level', 'Must be between 0 and 3.');
+    }
+
+    if (level >= 2) {
+      final productReferences =
+          <String, DocumentReference<Map<String, dynamic>>>{};
+      for (final field in const ['creatorUid', 'creatorId']) {
+        final snapshot = await firestore
+            .collection('products')
+            .where(field, isEqualTo: uid)
+            .get();
+        for (final product in snapshot.docs) {
+          productReferences[product.reference.path] = product.reference;
+        }
+      }
+      final references = productReferences.values.toList();
+      for (var start = 0; start < references.length; start += 450) {
+        final batch = firestore.batch();
+        for (final reference in references.skip(start).take(450)) {
+          batch.update(reference, {
+            'isActive': false,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
+        await batch.commit();
+      }
+    }
+
+    final profileReference = firestore.collection('creator_profiles').doc(uid);
+    final profileExists = (await profileReference.get()).exists;
+    final batch = firestore.batch();
+    batch.set(firestore.collection('users').doc(uid), {
+      'isSuspended': level == 3,
+      'creatorModerationLevel': level,
+      'creatorModerationReason': level == 0
+          ? FieldValue.delete()
+          : reason.trim(),
+      'creatorModerationIssuedAt': level == 0
+          ? FieldValue.delete()
+          : FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+    if (profileExists) {
+      batch.update(profileReference, {
+        'isStorefrontVisible': level < 2,
+        'moderationLevel': level,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
+  }
+
   /// Approving publishes the listing; rejecting hides it with a reason the
   /// creator sees. The creator is notified either way.
   @override
@@ -208,7 +279,10 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
     // An approved listing only goes live while its creator is verified.
     var creatorVerified = false;
     if (approve && creatorUid.isNotEmpty) {
-      final creator = await firestore.collection('creator_profiles').doc(creatorUid).get();
+      final creator = await firestore
+          .collection('creator_profiles')
+          .doc(creatorUid)
+          .get();
       creatorVerified = creator.data()?['verificationStatus'] == 'Verified';
     }
 

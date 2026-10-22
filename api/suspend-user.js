@@ -12,7 +12,7 @@ const ADMIN_ROLES = ['admin', 'manager', 'super_admin'];
 
 /**
  * POST /api/suspend-user
- * Body: { uid, suspend: boolean }
+ * Body: { uid, level: 0|1|2|3, reason: string, immediate?: boolean }
  *
  * Suspending a user must actually stop them from using the platform, not
  * just hide the UI behind a blocking screen. This disables their Firebase
@@ -36,8 +36,19 @@ module.exports = async (req, res) => {
 
     const body = readBody(req);
     const targetUid = typeof body.uid === 'string' ? body.uid.trim() : '';
-    const suspend = body.suspend === true;
+    const level = Number(body.level);
+    const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
+    const immediate = body.immediate === true;
     if (!targetUid) return res.status(400).json({ error: 'uid is required' });
+    if (![0, 1, 2, 3].includes(level)) {
+      return res.status(400).json({ error: 'level must be 0, 1, 2, or 3' });
+    }
+    if (level > 0 && !reason) {
+      return res.status(400).json({ error: 'A reason is required' });
+    }
+    if (immediate && level !== 3) {
+      return res.status(400).json({ error: 'Immediate suspension requires level 3' });
+    }
 
     const admin = getFirebaseAdmin();
     const firestore = admin.firestore();
@@ -59,23 +70,74 @@ module.exports = async (req, res) => {
     const targetRole = String(targetSnapshot.data().role || '').toLowerCase();
     const targetEmail = String(targetSnapshot.data().email || '').toLowerCase();
     const targetIsAdmin = ADMIN_ROLES.includes(targetRole) || SUPER_ADMIN_EMAILS.includes(targetEmail);
-    if (suspend && targetIsAdmin) {
+    if (level > 0 && targetIsAdmin) {
       return res.status(400).json({ error: 'Admins and managers cannot be suspended here' });
     }
 
-    await admin.auth().updateUser(targetUid, { disabled: suspend });
-    if (suspend) {
+    const isCreator = ['creator', 'seller'].includes(targetRole);
+    if ((level === 1 || level === 2) && !isCreator) {
+      return res.status(400).json({ error: 'Warning stages are only available for creators' });
+    }
+
+    const currentLevel = Number(targetSnapshot.data().creatorModerationLevel || 0);
+    if (isCreator && level > 0 && !immediate && level !== Math.min(currentLevel + 1, 3)) {
+      return res.status(409).json({ error: 'Creator warnings must be sent in order' });
+    }
+
+    const finalSuspension = level === 3;
+    await admin.auth().updateUser(targetUid, { disabled: finalSuspension });
+    if (finalSuspension) {
       // Invalidate any ID token already in the suspended user's hands so an
       // open app session is cut off immediately, not just future sign-ins.
       await admin.auth().revokeRefreshTokens(targetUid);
     }
 
-    await firestore.collection('users').doc(targetUid).update({
-      isSuspended: suspend,
+    const userUpdate = {
+      isSuspended: finalSuspension,
+      creatorModerationLevel: level,
+      creatorModerationReason: level === 0 ? FieldValue.delete() : reason,
+      creatorModerationIssuedAt: level === 0
+        ? FieldValue.delete()
+        : FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
-    });
+    };
 
-    return res.status(200).json({ success: true });
+    await firestore.collection('users').doc(targetUid).update(userUpdate);
+
+    if (isCreator) {
+      const profileRef = firestore.collection('creator_profiles').doc(targetUid);
+      const profileSnapshot = await profileRef.get();
+      if (profileSnapshot.exists) {
+        await profileRef.update({
+          isStorefrontVisible: level < 2,
+          moderationLevel: level,
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      }
+
+      if (level >= 2) {
+        const productDocs = new Map();
+        for (const field of ['creatorUid', 'creatorId']) {
+          const snapshot = await firestore.collection('products')
+            .where(field, '==', targetUid)
+            .get();
+          snapshot.docs.forEach((doc) => productDocs.set(doc.ref.path, doc.ref));
+        }
+        const references = [...productDocs.values()];
+        for (let start = 0; start < references.length; start += 450) {
+          const batch = firestore.batch();
+          references.slice(start, start + 450).forEach((reference) => {
+            batch.update(reference, {
+              isActive: false,
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+          });
+          await batch.commit();
+        }
+      }
+    }
+
+    return res.status(200).json({ success: true, level, immediate });
   } catch (error) {
     console.error('Suspend user error:', error.message || error);
     if (error.code === 'auth/user-not-found') {

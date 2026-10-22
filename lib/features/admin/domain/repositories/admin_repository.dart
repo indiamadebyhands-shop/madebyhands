@@ -16,14 +16,21 @@ abstract interface class AdminRepository {
   /// Platform categories. With [seedDefaults] an empty collection is filled
   /// with the defaults (admins only); otherwise the defaults are returned
   /// without writing.
-  Future<Either<Failure, List<String>>> getCategories({bool seedDefaults = false});
+  Future<Either<Failure, List<String>>> getCategories({
+    bool seedDefaults = false,
+  });
   Future<Either<Failure, void>> addCategory(String name);
   Future<Either<Failure, void>> deleteCategory(String name);
 
   /// Deletes every current category and replaces them with the app's
   /// built-in defaults (`kProductCategories`). Returns the resulting list.
   Future<Either<Failure, List<String>>> resetCategoriesToDefaults();
-  Future<Either<Failure, void>> suspendUser(String uid, bool isSuspended);
+  Future<Either<Failure, void>> setUserModeration({
+    required String uid,
+    required int level,
+    required String reason,
+    bool immediate = false,
+  });
   Future<Either<Failure, void>> reviewProduct({
     required String productId,
     required bool approve,

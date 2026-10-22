@@ -1,7 +1,9 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:madebyhands/core/theme/app_theme.dart';
 import 'package:madebyhands/features/auth/domain/entities/user_entity.dart';
 import 'package:madebyhands/features/creator/domain/entities/creator_notification.dart';
 import 'package:madebyhands/features/creator/domain/entities/creator_profile.dart';
@@ -29,6 +31,12 @@ class CreatorDashboardPage extends StatefulWidget {
 class _CreatorDashboardPageState extends State<CreatorDashboardPage> {
   int _selectedIndex = 0;
   final Set<int> _visited = {0};
+  String? _shownWarningKey;
+  bool _warningDialogOpen = false;
+  late int _moderationLevel;
+  late String _moderationReason;
+  late final StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>
+  _moderationSubscription;
 
   static const List<String> _titles = [
     'Artisan Dashboard',
@@ -38,6 +46,46 @@ class _CreatorDashboardPageState extends State<CreatorDashboardPage> {
     'My Profile',
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _moderationLevel = widget.user.creatorModerationLevel;
+    _moderationReason = widget.user.creatorModerationReason;
+    _moderationSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.user.uid)
+        .snapshots()
+        .listen(_onModerationSnapshot);
+  }
+
+  void _onModerationSnapshot(DocumentSnapshot<Map<String, dynamic>> snapshot) {
+    if (!mounted) return;
+    final data = snapshot.data();
+    final level =
+        (data?['creatorModerationLevel'] as num?)?.toInt() ??
+        widget.user.creatorModerationLevel;
+    final reason =
+        data?['creatorModerationReason'] as String? ??
+        widget.user.creatorModerationReason;
+    if (level != _moderationLevel || reason != _moderationReason) {
+      setState(() {
+        _moderationLevel = level;
+        _moderationReason = reason;
+      });
+    }
+    _scheduleWarningDialog(
+      level: level,
+      reason: reason,
+      issuedAt: data?['creatorModerationIssuedAt'],
+    );
+  }
+
+  @override
+  void dispose() {
+    _moderationSubscription.cancel();
+    super.dispose();
+  }
+
   void _select(int index) {
     setState(() {
       _selectedIndex = index;
@@ -45,15 +93,99 @@ class _CreatorDashboardPageState extends State<CreatorDashboardPage> {
     });
   }
 
-  Widget _view(int index, CreatorProfile profile) {
+  Widget _view(int index, CreatorProfile profile, int moderationLevel) {
     if (!_visited.contains(index)) return const SizedBox.shrink();
     return switch (index) {
       0 => CreatorHomeView(profile: profile),
-      1 => CreatorProductsView(profile: profile),
+      1 => CreatorProductsView(
+        profile: profile,
+        canAddProducts: moderationLevel < 2,
+      ),
       2 => CreatorOrdersView(profile: profile),
       3 => CreatorEarningsView(creatorId: profile.uid),
       _ => CreatorProfileView(profile: profile, user: widget.user),
     };
+  }
+
+  void _scheduleWarningDialog({
+    required int level,
+    required String reason,
+    Object? issuedAt,
+  }) {
+    if (level < 1 || level > 2) {
+      _shownWarningKey = null;
+      return;
+    }
+    final key = '$level|$reason|$issuedAt';
+    if (_shownWarningKey == key) return;
+    _shownWarningKey = key;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _showModerationWarning(level: level, reason: reason);
+    });
+  }
+
+  Future<void> _showModerationWarning({
+    required int level,
+    required String reason,
+  }) async {
+    if (_warningDialogOpen || !mounted) return;
+    _warningDialogOpen = true;
+    final warningColor = level == 1
+        ? Colors.amber.shade800
+        : Colors.red.shade700;
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          backgroundColor: const Color(0xFFFAF6EE),
+          titlePadding: const EdgeInsets.fromLTRB(24, 18, 8, 0),
+          title: Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: warningColor, size: 30),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  level == 1 ? 'First warning' : 'Second warning',
+                  style: TextStyle(
+                    color: warningColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Close',
+                onPressed: () => Navigator.pop(dialogContext),
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Reason',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                reason.trim().isEmpty ? 'No reason provided.' : reason.trim(),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                level == 1
+                    ? 'Please resolve this issue within 24 hours. The next warning may restrict your storefront.'
+                    : 'Please resolve this issue within 24 hours. Your storefront and products are hidden, and you cannot add new products.',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+      );
+    } finally {
+      _warningDialogOpen = false;
+    }
   }
 
   @override
@@ -105,6 +237,21 @@ class _CreatorDashboardPageState extends State<CreatorDashboardPage> {
                 ),
                 iconTheme: const IconThemeData(color: Color(0xFF8B261D)),
                 centerTitle: true,
+                leading: _moderationLevel > 0 && _moderationLevel < 3
+                    ? IconButton(
+                        tooltip: 'View account warning',
+                        onPressed: () => _showModerationWarning(
+                          level: _moderationLevel,
+                          reason: _moderationReason,
+                        ),
+                        icon: Icon(
+                          Icons.warning_amber_rounded,
+                          color: _moderationLevel == 1
+                              ? Colors.amber.shade800
+                              : Colors.red.shade700,
+                        ),
+                      )
+                    : null,
                 actions: [
                   _NotificationButton(creatorUid: profile.uid),
                   IconButton(
@@ -127,15 +274,14 @@ class _CreatorDashboardPageState extends State<CreatorDashboardPage> {
               body: IndexedStack(
                 index: _selectedIndex,
                 children: [
-                  for (var i = 0; i < _titles.length; i++) _view(i, profile)
+                  for (var i = 0; i < _titles.length; i++)
+                    _view(i, profile, _moderationLevel),
                 ],
               ),
               bottomNavigationBar: Container(
                 decoration: const BoxDecoration(
                   color: Color(0xFFFAF6EE),
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(20),
-                  ),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                 ),
                 child: ClipRRect(
                   borderRadius: const BorderRadius.vertical(
@@ -219,8 +365,7 @@ class _NotificationButton extends StatefulWidget {
 
 class _NotificationButtonState extends State<_NotificationButton> {
   late final Stream<List<CreatorNotification>> _notifications =
-      serviceLocator<CreatorRepository>()
-          .watchNotifications(widget.creatorUid);
+      serviceLocator<CreatorRepository>().watchNotifications(widget.creatorUid);
 
   @override
   Widget build(BuildContext context) {
