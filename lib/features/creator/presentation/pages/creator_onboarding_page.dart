@@ -1068,14 +1068,26 @@ class _ImageCropPreviewDialogState extends State<_ImageCropPreviewDialog> {
       if (byteData == null) throw Exception('Crop failed');
       final pngBytes = byteData.buffer.asUint8List();
 
-      final tempDir = Directory.systemTemp;
-      final croppedFile = File(
-        '${tempDir.path}/cropped_${DateTime.now().millisecondsSinceEpoch}.png',
-      );
-      await croppedFile.writeAsBytes(pngBytes);
+      if (kIsWeb) {
+        final xFile = XFile.fromData(
+          pngBytes,
+          mimeType: 'image/png',
+          name: 'cropped_${DateTime.now().millisecondsSinceEpoch}.png',
+        );
+        final croppedFile = File(xFile.path);
+        if (mounted) {
+          Navigator.pop(context, croppedFile);
+        }
+      } else {
+        final tempDir = Directory.systemTemp;
+        final croppedFile = File(
+          '${tempDir.path}/cropped_${DateTime.now().millisecondsSinceEpoch}.png',
+        );
+        await croppedFile.writeAsBytes(pngBytes);
 
-      if (mounted) {
-        Navigator.pop(context, croppedFile);
+        if (mounted) {
+          Navigator.pop(context, croppedFile);
+        }
       }
     } catch (e) {
       if (mounted) setState(() => _isCropping = false);
@@ -1365,29 +1377,23 @@ class _CropOverlayMaskPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final backgroundPath = Path()
+    final maskPath = Path()
+      ..fillType = PathFillType.evenOdd
       ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
-    final cutoutPath = Path();
 
     if (isCircle) {
-      cutoutPath.addOval(cropRect);
+      maskPath.addOval(cropRect);
     } else {
-      cutoutPath.addRRect(
+      maskPath.addRRect(
         RRect.fromRectAndRadius(cropRect, const Radius.circular(16.0)),
       );
     }
-
-    final overlayPath = Path.combine(
-      PathOperation.difference,
-      backgroundPath,
-      cutoutPath,
-    );
 
     final paint = Paint()
       ..color = Colors.black.withValues(alpha: 0.55)
       ..style = PaintingStyle.fill;
 
-    canvas.drawPath(overlayPath, paint);
+    canvas.drawPath(maskPath, paint);
 
     final borderPaint = Paint()
       ..color = const Color(0xFF8B261D)
