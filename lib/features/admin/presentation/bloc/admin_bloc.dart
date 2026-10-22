@@ -275,9 +275,10 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
     AdminSuspendUserRequested event,
     Emitter<AdminState> emit,
   ) async {
-    final res = await _adminRepository.suspendUser(
-      event.uid,
-      event.isSuspended,
+    final res = await _adminRepository.setUserModeration(
+      uid: event.uid,
+      level: event.moderationLevel,
+      reason: event.reason,
     );
     final failure = res.fold<String?>(
       (failure) => failure.message,
@@ -289,7 +290,12 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
     }
     emit(
       state.copyWith(
-        notice: event.isSuspended ? 'User suspended.' : 'User reinstated.',
+        notice: switch (event.moderationLevel) {
+          0 => 'Warning cleared and user reinstated.',
+          1 => 'First warning sent.',
+          2 => 'Second warning sent and storefront hidden.',
+          _ => 'User suspended.',
+        },
       ),
     );
     final who = event.userLabel.trim().isEmpty
@@ -297,10 +303,19 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
         : event.userLabel.trim();
     await _logs.log(
       category: AdminLogCategory.user,
-      action: event.isSuspended ? 'user.suspended' : 'user.reinstated',
-      summary: event.isSuspended
-          ? 'Suspended user $who.'
-          : 'Reinstated user $who.',
+      action: switch (event.moderationLevel) {
+        0 => 'user.reinstated',
+        1 => 'creator.warning.first',
+        2 => 'creator.warning.second',
+        _ => 'user.suspended',
+      },
+      summary: switch (event.moderationLevel) {
+        0 => 'Cleared warnings and reinstated user $who.',
+        1 => 'Sent first warning to $who: ${event.reason}',
+        2 =>
+          'Sent second warning to $who and hid their storefront: ${event.reason}',
+        _ => 'Finally suspended user $who: ${event.reason}',
+      },
       targetId: event.uid,
     );
   }

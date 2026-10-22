@@ -15,15 +15,22 @@ enum ProductSortCriteria { name, price, date }
 
 class CreatorProductsView extends StatefulWidget {
   final CreatorProfile profile;
-  const CreatorProductsView({super.key, required this.profile});
+  final bool canAddProducts;
+  const CreatorProductsView({
+    super.key,
+    required this.profile,
+    this.canAddProducts = true,
+  });
 
   @override
   State<CreatorProductsView> createState() => _CreatorProductsViewState();
 }
 
 class _CreatorProductsViewState extends State<CreatorProductsView> {
-  late final Stream<List<CreatorProduct>> _products = serviceLocator<CreatorRepository>()
-      .watchCreatorProducts(widget.profile.uid);
+  late final Stream<List<CreatorProduct>> _products =
+      serviceLocator<CreatorRepository>().watchCreatorProducts(
+        widget.profile.uid,
+      );
   ProductSortCriteria _criteria = ProductSortCriteria.date;
   bool _ascending = false;
 
@@ -96,7 +103,9 @@ class _CreatorProductsViewState extends State<CreatorProductsView> {
   List<CreatorProduct> _sorted(List<CreatorProduct> products) {
     final sorted = List<CreatorProduct>.of(products);
     int compare(CreatorProduct a, CreatorProduct b) => switch (_criteria) {
-      ProductSortCriteria.name => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+      ProductSortCriteria.name => a.name.toLowerCase().compareTo(
+        b.name.toLowerCase(),
+      ),
       ProductSortCriteria.price => a.price.compareTo(b.price),
       ProductSortCriteria.date => a.createdAt.compareTo(b.createdAt),
     };
@@ -105,6 +114,16 @@ class _CreatorProductsViewState extends State<CreatorProductsView> {
   }
 
   void _addProduct() {
+    if (!widget.canAddProducts) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Adding products is disabled while your second warning is active.',
+          ),
+        ),
+      );
+      return;
+    }
     if (!widget.profile.isVerified) {
       showDialog<void>(
         context: context,
@@ -122,7 +141,10 @@ class _CreatorProductsViewState extends State<CreatorProductsView> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('OK', style: TextStyle(color: Color(0xFF8B261D))),
+              child: const Text(
+                'OK',
+                style: TextStyle(color: Color(0xFF8B261D)),
+              ),
             ),
           ],
         ),
@@ -131,7 +153,9 @@ class _CreatorProductsViewState extends State<CreatorProductsView> {
     }
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => AddProductPage(profile: widget.profile)),
+      MaterialPageRoute(
+        builder: (_) => AddProductPage(profile: widget.profile),
+      ),
     );
   }
 
@@ -144,7 +168,9 @@ class _CreatorProductsViewState extends State<CreatorProductsView> {
         onPressed: _addProduct,
         icon: const Icon(Icons.add),
         label: const Text('Add product'),
-        backgroundColor: const Color(0xFF8B261D),
+        backgroundColor: widget.canAddProducts
+            ? const Color(0xFF8B261D)
+            : Colors.grey.shade600,
         foregroundColor: Colors.white,
       ),
       body: StreamBuilder<List<CreatorProduct>>(
@@ -254,7 +280,10 @@ class _ProductList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (products.isEmpty) {
       return Center(
-        child: Text(emptyMessage, style: const TextStyle(color: AppColors.mutedText)),
+        child: Text(
+          emptyMessage,
+          style: const TextStyle(color: AppColors.mutedText),
+        ),
       );
     }
     return ListView.builder(
@@ -313,8 +342,13 @@ class _ProductTile extends StatelessWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: const Color(0xFFFAF6EE),
-        title: const Text('Delete product?', style: TextStyle(color: Color(0xFF8B261D))),
-        content: Text('"${product.name}" will be removed from your shop permanently.'),
+        title: const Text(
+          'Delete product?',
+          style: TextStyle(color: Color(0xFF8B261D)),
+        ),
+        content: Text(
+          '"${product.name}" will be removed from your shop permanently.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
@@ -339,7 +373,10 @@ class _ProductTile extends StatelessWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: const Color(0xFFFAF6EE),
-        title: const Text('Update stock', style: TextStyle(color: Color(0xFF8B261D))),
+        title: const Text(
+          'Update stock',
+          style: TextStyle(color: Color(0xFF8B261D)),
+        ),
         content: Form(
           key: formKey,
           child: TextFormField(
@@ -368,7 +405,9 @@ class _ProductTile extends StatelessWidget {
                 Navigator.pop(dialogContext, int.parse(controller.text));
               }
             },
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF8B261D)),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF8B261D),
+            ),
             child: const Text('Save'),
           ),
         ],
@@ -453,7 +492,10 @@ class _ProductTile extends StatelessWidget {
                       product.category,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 11, color: AppColors.mutedText),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.mutedText,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -464,7 +506,8 @@ class _ProductTile extends StatelessWidget {
                         color: statusColor,
                       ),
                     ),
-                    if (product.isRejected && product.rejectionReason.isNotEmpty) ...[
+                    if (product.isRejected &&
+                        product.rejectionReason.isNotEmpty) ...[
                       const SizedBox(height: 6),
                       Container(
                         padding: const EdgeInsets.all(8),
@@ -497,9 +540,19 @@ class _ProductTile extends StatelessWidget {
                     case 'stock':
                       _editStock(context);
                     case 'publish':
-                      bloc.add(CreatorSetProductPublished(productId: product.id, published: true));
+                      bloc.add(
+                        CreatorSetProductPublished(
+                          productId: product.id,
+                          published: true,
+                        ),
+                      );
                     case 'unpublish':
-                      bloc.add(CreatorSetProductPublished(productId: product.id, published: false));
+                      bloc.add(
+                        CreatorSetProductPublished(
+                          productId: product.id,
+                          published: false,
+                        ),
+                      );
                     case 'share':
                       _shareProduct(context);
                     case 'delete':
@@ -509,13 +562,28 @@ class _ProductTile extends StatelessWidget {
                 itemBuilder: (context) => [
                   PopupMenuItem(
                     value: 'edit',
-                    child: Text(product.isRejected ? 'Edit & resubmit' : 'Edit (needs re-approval)'),
+                    child: Text(
+                      product.isRejected
+                          ? 'Edit & resubmit'
+                          : 'Edit (needs re-approval)',
+                    ),
                   ),
-                  const PopupMenuItem(value: 'stock', child: Text('Update stock')),
-                  if (product.isApproved && !product.isActive && profile.isVerified)
-                    const PopupMenuItem(value: 'publish', child: Text('Publish')),
+                  const PopupMenuItem(
+                    value: 'stock',
+                    child: Text('Update stock'),
+                  ),
+                  if (product.isApproved &&
+                      !product.isActive &&
+                      profile.isVerified)
+                    const PopupMenuItem(
+                      value: 'publish',
+                      child: Text('Publish'),
+                    ),
                   if (product.isApproved && product.isActive)
-                    const PopupMenuItem(value: 'unpublish', child: Text('Unpublish')),
+                    const PopupMenuItem(
+                      value: 'unpublish',
+                      child: Text('Unpublish'),
+                    ),
                   if (product.isApproved)
                     const PopupMenuItem(value: 'share', child: Text('Share')),
                   const PopupMenuItem(

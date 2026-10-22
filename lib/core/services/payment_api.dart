@@ -10,7 +10,7 @@ abstract final class PaymentApi {
     'PAYMENT_API_BASE_URL',
   );
 
-  static const String _defaultBaseUrl = 'https://madebyhands.vercel.app';
+  static const String _defaultBaseUrl = 'https://www.madebyhands.shop';
 
   /// The web build is served by the same Vercel project as the API, so it
   /// talks to its own origin unless a base URL is configured explicitly.
@@ -112,14 +112,32 @@ class UserModerationApi {
 
   UserModerationApi({Dio? dio}) : _dio = dio ?? PaymentApi.createClient();
 
-  Future<void> setSuspended({required String uid, required bool suspend}) async {
+  Future<void> setModeration({
+    required String uid,
+    required int level,
+    required String reason,
+  }) async {
     final token = await PaymentApi.idToken();
     try {
-      await _dio.post<Map<String, dynamic>>(
+      final response = await _dio.post<Map<String, dynamic>>(
         '/api/suspend-user',
-        data: {'uid': uid, 'suspend': suspend},
+        data: {
+          'uid': uid,
+          'level': level,
+          'reason': reason,
+          // Backward compatibility while the staged endpoint is rolling out.
+          'suspend': level == 3,
+        },
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
+      final responseLevel = response.data?['level'];
+      final legacyAuthOnlyResponse =
+          responseLevel == null && (level == 0 || level == 3);
+      if (!legacyAuthOnlyResponse && responseLevel != level) {
+        throw StateError(
+          'The server has not been updated for staged creator warnings yet.',
+        );
+      }
     } on DioException catch (error) {
       throw StateError(
         PaymentApi.errorMessage(

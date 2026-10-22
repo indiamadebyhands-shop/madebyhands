@@ -6,6 +6,8 @@ class UserEntity {
   final String role; // 'buyer', 'creator', 'admin', 'super_admin', 'manager'
   final bool isVerified;
   final bool isSuspended;
+  final int creatorModerationLevel;
+  final String creatorModerationReason;
 
   UserEntity({
     required this.uid,
@@ -15,6 +17,8 @@ class UserEntity {
     required this.role,
     this.isVerified = false,
     this.isSuspended = false,
+    this.creatorModerationLevel = 0,
+    this.creatorModerationReason = '',
   });
 
   static const List<String> presetSuperAdminEmails = [

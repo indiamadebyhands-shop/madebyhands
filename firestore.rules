@@ -55,6 +55,12 @@ service cloud.firestore {
         get(userPath()).data.get('isSuspended', false) == true;
     }
 
+    function creatorModerationLevel() {
+      return signedIn() && exists(userPath())
+        ? get(userPath()).data.get('creatorModerationLevel', 0)
+        : 0;
+    }
+
     function changedKeys() {
       return request.resource.data.diff(resource.data).affectedKeys();
     }
@@ -104,7 +110,7 @@ service cloud.firestore {
 
       // New listings always start hidden and pending admin approval.
       allow create: if isAdminOrManager() ||
-        (signedIn() && !isSuspended() &&
+        (signedIn() && !isSuspended() && creatorModerationLevel() < 2 &&
           request.resource.data.creatorUid == request.auth.uid &&
           request.resource.data.status == 'Pending Approval' &&
           request.resource.data.isActive == false &&
@@ -119,7 +125,7 @@ service cloud.firestore {
           request.resource.data.get('orderCount', 0) == resource.data.get('orderCount', 0) &&
           request.resource.data.get('wishlistCount', 0) == resource.data.get('wishlistCount', 0)) ||
         // Creators may publish/unpublish approved listings and adjust stock.
-        (signedIn() && !isSuspended() && isOwnProduct() &&
+        (signedIn() && !isSuspended() && creatorModerationLevel() < 2 && isOwnProduct() &&
           changedKeys().hasOnly(['isActive', 'stock', 'updatedAt']) &&
           (request.resource.data.isActive == false ||
             (resource.data.status == 'Approved' &&
@@ -228,9 +234,12 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create: if isAdminOrManager() ||
         (signedIn() && request.auth.uid == creatorId &&
+          request.resource.data.get('isStorefrontVisible', true) == true &&
+          !request.resource.data.keys().hasAny(['moderationLevel']) &&
           request.resource.data.get('verificationStatus', 'Unverified') in ['Unverified', 'In-Process']);
       allow update: if isAdminOrManager() ||
         (signedIn() && request.auth.uid == creatorId &&
+          !changedKeys().hasAny(['isStorefrontVisible', 'moderationLevel']) &&
           (request.resource.data.get('verificationStatus', 'Unverified') == resource.data.get('verificationStatus', 'Unverified') ||
             request.resource.data.get('verificationStatus', 'Unverified') in ['Unverified', 'In-Process']));
       allow delete: if isAdminOrManager() || (signedIn() && request.auth.uid == creatorId);
@@ -259,12 +268,26 @@ service cloud.firestore {
         isAdminOrManager()
       );
 
-      // Admins notify anyone. Other users may only raise an admin alert.
+      // Admins notify anyone. Other users may raise an admin alert or create
+      // the confirmation for a support ticket that belongs to themselves.
       allow create: if isAdminOrManager() ||
         (signedIn() &&
           request.resource.data.type == 'admin' &&
           !('creatorUid' in request.resource.data) &&
-          !('userId' in request.resource.data));
+          !('userId' in request.resource.data)) ||
+        (signedIn() &&
+          request.resource.data.type == 'support' &&
+          request.resource.data.category == 'support_ticket' &&
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.creatorUid == request.auth.uid &&
+          request.resource.data.ticketId == request.resource.data.targetId &&
+          request.resource.data.isRead == false &&
+          request.resource.data.createdAt == request.time &&
+          request.resource.data.keys().hasOnly([
+            'userId', 'creatorUid', 'type', 'category', 'title', 'message',
+            'targetId', 'ticketId', 'createdAt', 'isRead'
+          ]) &&
+          getAfter(/databases/$(database)/documents/support_tickets/$(request.resource.data.targetId)).data.userId == request.auth.uid);
 
       allow update: if isAdminOrManager() ||
         (signedIn() &&

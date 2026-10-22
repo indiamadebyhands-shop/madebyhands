@@ -42,28 +42,34 @@ class FirestoreBuyerRepository implements BuyerRepository {
       .collection('creator_profiles')
       .snapshots()
       .map(
-        (snapshot) => snapshot.docs.map((document) {
-          final data = document.data();
-          return PublicCreator(
-            uid: data['uid'] as String? ?? document.id,
-            name: data['name'] as String? ?? '',
-            businessName: data['businessName'] as String? ?? '',
-            profileImage: data['profileImage'] as String? ?? '',
-            bio: data['bio'] as String? ?? '',
-            location: data['location'] as String? ?? '',
-            socialLinks: List<String>.from(
-              data['socialLinks'] as List? ?? const [],
-            ),
-            portfolio: List<String>.from(
-              data['portfolio'] as List? ?? const [],
-            ),
-            exhibitionPictures: List<String>.from(
-              data['exhibitionPictures'] as List? ?? const [],
-            ),
-            story: data['story'] as String? ?? '',
-            isVerified: data['verificationStatus'] == 'Verified',
-          );
-        }).toList(),
+        (snapshot) => snapshot.docs
+            .where(
+              (document) =>
+                  document.data()['isStorefrontVisible'] as bool? ?? true,
+            )
+            .map((document) {
+              final data = document.data();
+              return PublicCreator(
+                uid: data['uid'] as String? ?? document.id,
+                name: data['name'] as String? ?? '',
+                businessName: data['businessName'] as String? ?? '',
+                profileImage: data['profileImage'] as String? ?? '',
+                bio: data['bio'] as String? ?? '',
+                location: data['location'] as String? ?? '',
+                socialLinks: List<String>.from(
+                  data['socialLinks'] as List? ?? const [],
+                ),
+                portfolio: List<String>.from(
+                  data['portfolio'] as List? ?? const [],
+                ),
+                exhibitionPictures: List<String>.from(
+                  data['exhibitionPictures'] as List? ?? const [],
+                ),
+                story: data['story'] as String? ?? '',
+                isVerified: data['verificationStatus'] == 'Verified',
+              );
+            })
+            .toList(),
       );
 
   // The admin-managed `categories` collection is the single source of truth
@@ -240,9 +246,9 @@ class FirestoreBuyerRepository implements BuyerRepository {
     controller = StreamController<List<BuyerProductNotification>>(
       onListen: () {
         productSubscription = _liveProducts.snapshots().listen((snapshot) {
-              productSnapshot = snapshot;
-              emitNotifications();
-            }, onError: controller.addError);
+          productSnapshot = snapshot;
+          emitNotifications();
+        }, onError: controller.addError);
         favoriteSubscription = firestore
             .collection('users')
             .doc(userId)
@@ -278,22 +284,22 @@ class FirestoreBuyerRepository implements BuyerRepository {
         .where('userId', isEqualTo: userId)
         .snapshots()
         .map((snapshot) {
-      final list = snapshot.docs.map((doc) {
-        final data = doc.data();
-        final title = data['title'] as String? ?? 'Support Update';
-        final message = data['message'] as String? ?? '';
-        final createdAt =
-            (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
-        return BuyerProductNotification.support(
-          id: doc.id,
-          title: title,
-          message: message,
-          publishedAt: createdAt,
-        );
-      }).toList();
-      list.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
-      return list;
-    });
+          final list = snapshot.docs.map((doc) {
+            final data = doc.data();
+            final title = data['title'] as String? ?? 'Support Update';
+            final message = data['message'] as String? ?? '';
+            final createdAt =
+                (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+            return BuyerProductNotification.support(
+              id: doc.id,
+              title: title,
+              message: message,
+              publishedAt: createdAt,
+            );
+          }).toList();
+          list.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
+          return list;
+        });
   }
 
   @override
@@ -341,9 +347,7 @@ class FirestoreBuyerRepository implements BuyerRepository {
               .toList();
           emit();
         }, onError: controller.addError);
-        supportSubscription = watchSupportNotifications(userId).listen((
-          value,
-        ) {
+        supportSubscription = watchSupportNotifications(userId).listen((value) {
           supports = value;
           emit();
         }, onError: controller.addError);
@@ -703,7 +707,9 @@ class FirestoreBuyerRepository implements BuyerRepository {
     if (value.contains('paint') || value.contains('art')) {
       return (0xFFE7C889, Icons.palette_outlined);
     }
-    if (value.contains('pottery') || value.contains('ceramic') || value.contains('clay')) {
+    if (value.contains('pottery') ||
+        value.contains('ceramic') ||
+        value.contains('clay')) {
       return (0xFFAFC9D6, Icons.local_florist_outlined);
     }
     if (value.contains('jewel') || value.contains('fashion')) {
@@ -712,7 +718,9 @@ class FirestoreBuyerRepository implements BuyerRepository {
     if (value.contains('textile') || value.contains('fiber')) {
       return (0xFFE8AA91, Icons.checkroom_outlined);
     }
-    if (value.contains('home') || value.contains('decor') || value.contains('décor')) {
+    if (value.contains('home') ||
+        value.contains('decor') ||
+        value.contains('décor')) {
       return (0xFFB8C99D, Icons.chair_outlined);
     }
     if (value.contains('paper') || value.contains('book')) {

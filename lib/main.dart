@@ -108,7 +108,8 @@ class _MyAppState extends State<MyApp> {
         final category = data['category'] as String?;
         if (user.isAdminOrManager) {
           int? section;
-          if (category == 'creator_verification' || category == 'verification') {
+          if (category == 'creator_verification' ||
+              category == 'verification') {
             section = 1;
           } else if (category == 'product_approval' || category == 'product') {
             section = 2;
@@ -127,8 +128,12 @@ class _MyAppState extends State<MyApp> {
       },
     );
 
-    if (user.isSuspended) return const _SuspendedScreen();
-    if (user.isAdminOrManager) return AdminDashboardPage(key: ValueKey(user.uid));
+    if (user.isSuspended) {
+      return _SuspendedScreen(reason: user.creatorModerationReason);
+    }
+    if (user.isAdminOrManager) {
+      return AdminDashboardPage(key: ValueKey(user.uid));
+    }
     if (user.isCreator) {
       return CreatorFlowWrapper(key: ValueKey(user.uid), user: user);
     }
@@ -155,7 +160,11 @@ class _SessionErrorScreen extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.cloud_off_outlined, size: 56, color: AppColors.mutedText),
+                const Icon(
+                  Icons.cloud_off_outlined,
+                  size: 56,
+                  color: AppColors.mutedText,
+                ),
                 const SizedBox(height: 16),
                 const Text(
                   'We could not load your account',
@@ -170,11 +179,13 @@ class _SessionErrorScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 FilledButton(
-                  onPressed: () => context.read<AuthBloc>().add(AuthIsUserLoggedIn()),
+                  onPressed: () =>
+                      context.read<AuthBloc>().add(AuthIsUserLoggedIn()),
                   child: const Text('Retry'),
                 ),
                 TextButton(
-                  onPressed: () => context.read<AuthBloc>().add(AuthLogoutRequested()),
+                  onPressed: () =>
+                      context.read<AuthBloc>().add(AuthLogoutRequested()),
                   child: const Text('Sign out'),
                 ),
               ],
@@ -187,7 +198,9 @@ class _SessionErrorScreen extends StatelessWidget {
 }
 
 class _SuspendedScreen extends StatelessWidget {
-  const _SuspendedScreen();
+  final String reason;
+
+  const _SuspendedScreen({this.reason = ''});
 
   @override
   Widget build(BuildContext context) {
@@ -212,9 +225,19 @@ class _SuspendedScreen extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.mutedText),
                 ),
+                if (reason.trim().isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Reason',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(reason.trim(), textAlign: TextAlign.center),
+                ],
                 const SizedBox(height: 20),
                 OutlinedButton(
-                  onPressed: () => context.read<AuthBloc>().add(AuthLogoutRequested()),
+                  onPressed: () =>
+                      context.read<AuthBloc>().add(AuthLogoutRequested()),
                   child: const Text('Sign out'),
                 ),
               ],

@@ -73,10 +73,11 @@ class _FakeAdminRepository implements AdminRepository {
   ) async => _result(null);
 
   @override
-  Future<Either<Failure, void>> suspendUser(
-    String uid,
-    bool isSuspended,
-  ) async => _result(null);
+  Future<Either<Failure, void>> setUserModeration({
+    required String uid,
+    required int level,
+    required String reason,
+  }) async => _result(null);
 
   @override
   Future<Either<Failure, void>> approveCreator(String uid) async =>
@@ -261,19 +262,23 @@ void main() {
       bloc.add(
         const AdminSuspendUserRequested(
           'u1',
-          true,
+          3,
+          reason: 'Policy violation',
           userLabel: 'Ravi (ravi@example.com)',
         ),
       );
       await settle();
-      bloc.add(const AdminSuspendUserRequested('u1', false));
+      bloc.add(const AdminSuspendUserRequested('u1', 0));
       await settle();
 
       expect(
         logs.entries.first.summary,
-        'Suspended user Ravi (ravi@example.com).',
+        'Finally suspended user Ravi (ravi@example.com): Policy violation',
       );
-      expect(logs.entries.last.summary, 'Reinstated user u1.');
+      expect(
+        logs.entries.last.summary,
+        'Cleared warnings and reinstated user u1.',
+      );
       expect(logs.entries.first.targetId, 'u1');
     });
 

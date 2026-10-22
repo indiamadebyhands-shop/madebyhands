@@ -59,7 +59,8 @@ class AdminRepositoryImpl implements AdminRepository {
   @override
   Future<Either<Failure, List<String>>> getCategories({
     bool seedDefaults = false,
-  }) => _guard(() => remoteDataSource.getCategories(seedDefaults: seedDefaults));
+  }) =>
+      _guard(() => remoteDataSource.getCategories(seedDefaults: seedDefaults));
 
   @override
   Future<Either<Failure, void>> addCategory(String name) =>
@@ -77,8 +78,27 @@ class AdminRepositoryImpl implements AdminRepository {
   // must disable the user's actual Firebase Auth account and revoke any
   // open session, which only the Admin SDK (server-side) can do.
   @override
-  Future<Either<Failure, void>> suspendUser(String uid, bool isSuspended) =>
-      _guard(() => userModerationApi.setSuspended(uid: uid, suspend: isSuspended));
+  Future<Either<Failure, void>> setUserModeration({
+    required String uid,
+    required int level,
+    required String reason,
+  }) => _guard(() async {
+    // Warning stages remain admin-controlled Firestore writes and work
+    // immediately. Only disabling/re-enabling Firebase Auth needs the
+    // privileged server endpoint.
+    if (level == 0 || level == 3) {
+      await userModerationApi.setModeration(
+        uid: uid,
+        level: level,
+        reason: reason,
+      );
+    }
+    await remoteDataSource.setModerationState(
+      uid: uid,
+      level: level,
+      reason: reason,
+    );
+  });
 
   @override
   Future<Either<Failure, void>> reviewProduct({
