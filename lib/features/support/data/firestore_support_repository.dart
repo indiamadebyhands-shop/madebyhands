@@ -142,20 +142,29 @@ class FirestoreSupportRepository implements SupportRepository {
       'createdAt': FieldValue.serverTimestamp(),
       'isRead': false,
     });
-    batch.set(firestore.collection('notifications').doc(), {
-      'userId': userId,
-      'creatorUid': userId,
-      'type': 'support',
-      'category': 'support_ticket',
-      'title': 'Support ticket created',
-      'message': userMsg,
-      'targetId': ticket.id,
-      'ticketId': ticket.id,
-      'createdAt': FieldValue.serverTimestamp(),
-      'isRead': false,
-    });
-
     await batch.commit();
+
+    // This acknowledgement is useful but must never make a successfully
+    // created ticket appear to have failed. Keeping it outside the atomic
+    // ticket batch also supports clients briefly running older rules while a
+    // rules deployment rolls out.
+    try {
+      await firestore.collection('notifications').add({
+        'userId': userId,
+        'creatorUid': userId,
+        'type': 'support',
+        'category': 'support_ticket',
+        'title': 'Support ticket created',
+        'message': userMsg,
+        'targetId': ticket.id,
+        'ticketId': ticket.id,
+        'createdAt': FieldValue.serverTimestamp(),
+        'isRead': false,
+      });
+    } catch (_) {
+      // The support conversation already exists; a notification failure is
+      // non-critical and must not encourage the user to submit a duplicate.
+    }
 
     NotificationMessagingService.sendPushNotification(
       targetUserId: 'admin',
