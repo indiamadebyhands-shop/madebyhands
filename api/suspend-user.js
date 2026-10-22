@@ -12,7 +12,7 @@ const ADMIN_ROLES = ['admin', 'manager', 'super_admin'];
 
 /**
  * POST /api/suspend-user
- * Body: { uid, level: 0|1|2|3, reason: string }
+ * Body: { uid, level: 0|1|2|3, reason: string, immediate?: boolean }
  *
  * Suspending a user must actually stop them from using the platform, not
  * just hide the UI behind a blocking screen. This disables their Firebase
@@ -38,12 +38,16 @@ module.exports = async (req, res) => {
     const targetUid = typeof body.uid === 'string' ? body.uid.trim() : '';
     const level = Number(body.level);
     const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
+    const immediate = body.immediate === true;
     if (!targetUid) return res.status(400).json({ error: 'uid is required' });
     if (![0, 1, 2, 3].includes(level)) {
       return res.status(400).json({ error: 'level must be 0, 1, 2, or 3' });
     }
     if (level > 0 && !reason) {
       return res.status(400).json({ error: 'A reason is required' });
+    }
+    if (immediate && level !== 3) {
+      return res.status(400).json({ error: 'Immediate suspension requires level 3' });
     }
 
     const admin = getFirebaseAdmin();
@@ -76,7 +80,7 @@ module.exports = async (req, res) => {
     }
 
     const currentLevel = Number(targetSnapshot.data().creatorModerationLevel || 0);
-    if (isCreator && level > 0 && level !== Math.min(currentLevel + 1, 3)) {
+    if (isCreator && level > 0 && !immediate && level !== Math.min(currentLevel + 1, 3)) {
       return res.status(409).json({ error: 'Creator warnings must be sent in order' });
     }
 
@@ -133,7 +137,7 @@ module.exports = async (req, res) => {
       }
     }
 
-    return res.status(200).json({ success: true, level });
+    return res.status(200).json({ success: true, level, immediate });
   } catch (error) {
     console.error('Suspend user error:', error.message || error);
     if (error.code === 'auth/user-not-found') {

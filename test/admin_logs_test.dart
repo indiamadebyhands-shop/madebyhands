@@ -77,6 +77,7 @@ class _FakeAdminRepository implements AdminRepository {
     required String uid,
     required int level,
     required String reason,
+    bool immediate = false,
   }) async => _result(null);
 
   @override
@@ -281,6 +282,28 @@ void main() {
       );
       expect(logs.entries.first.targetId, 'u1');
     });
+
+    test(
+      'an immediate suspension is distinguished from staged warnings',
+      () async {
+        bloc.add(
+          const AdminSuspendUserRequested(
+            'c1',
+            3,
+            reason: 'Severe policy violation',
+            immediate: true,
+            userLabel: 'Asha Rao',
+          ),
+        );
+        await settle();
+
+        expect(logs.entries.single.action, 'user.suspended.immediate');
+        expect(
+          logs.entries.single.summary,
+          'Immediately suspended user Asha Rao: Severe policy violation',
+        );
+      },
+    );
 
     test('product decisions include the product and the reason', () async {
       bloc.add(

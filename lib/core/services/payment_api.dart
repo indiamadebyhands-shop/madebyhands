@@ -116,6 +116,7 @@ class UserModerationApi {
     required String uid,
     required int level,
     required String reason,
+    bool immediate = false,
   }) async {
     final token = await PaymentApi.idToken();
     try {
@@ -125,6 +126,7 @@ class UserModerationApi {
           'uid': uid,
           'level': level,
           'reason': reason,
+          'immediate': immediate,
           // Backward compatibility while the staged endpoint is rolling out.
           'suspend': level == 3,
         },

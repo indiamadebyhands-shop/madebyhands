@@ -315,23 +315,32 @@ class _UserTile extends StatelessWidget {
           tooltip: 'Actions',
           itemBuilder: (context) => [
             const PopupMenuItem(value: 'view', child: Text('View profile')),
-            PopupMenuItem(
-              value: 'moderate',
-              child: Text(
-                user.isCreator && !user.isSuspended
-                    ? switch (user.creatorModerationLevel) {
-                        0 => 'Send first warning',
-                        1 => 'Send second warning',
-                        _ => 'Apply final suspension',
-                      }
-                    : user.isSuspended
-                    ? 'Reinstate user'
-                    : 'Suspend user',
-                style: TextStyle(
-                  color: user.isSuspended ? Colors.green : Colors.redAccent,
+            if (user.isSuspended)
+              const PopupMenuItem(
+                value: 'clear',
+                child: Text(
+                  'Reinstate user',
+                  style: TextStyle(color: Colors.green),
+                ),
+              )
+            else ...[
+              if (user.isCreator)
+                PopupMenuItem(
+                  value: 'staged',
+                  child: Text(switch (user.creatorModerationLevel) {
+                    0 => 'Start staged warnings',
+                    1 => 'Send second warning',
+                    _ => 'Apply final-stage suspension',
+                  }),
+                ),
+              const PopupMenuItem(
+                value: 'suspend_now',
+                child: Text(
+                  'Suspend immediately',
+                  style: TextStyle(color: Colors.redAccent),
                 ),
               ),
-            ),
+            ],
             if (user.isCreator &&
                 !user.isSuspended &&
                 user.creatorModerationLevel > 0)
@@ -348,6 +357,8 @@ class _UserTile extends StatelessWidget {
               _viewProfile(context);
             } else if (value == 'clear') {
               _confirmClearModeration(context);
+            } else if (value == 'suspend_now') {
+              _confirmModeration(context, immediate: true);
             } else {
               _confirmModeration(context);
             }
@@ -357,13 +368,18 @@ class _UserTile extends StatelessWidget {
     );
   }
 
-  Future<void> _confirmModeration(BuildContext context) async {
+  Future<void> _confirmModeration(
+    BuildContext context, {
+    bool immediate = false,
+  }) async {
     final adminBloc = context.read<AdminBloc>();
     if (user.isSuspended) {
       await _confirmClearModeration(context);
       return;
     }
-    final level = user.isCreator
+    final level = immediate
+        ? 3
+        : user.isCreator
         ? (user.creatorModerationLevel >= 2
               ? 3
               : user.creatorModerationLevel + 1)
@@ -375,7 +391,9 @@ class _UserTile extends StatelessWidget {
         builder: (dialogContext, setDialogState) => AlertDialog(
           scrollable: true,
           title: Text(
-            user.isCreator
+            immediate
+                ? 'Suspend ${user.name} immediately?'
+                : user.isCreator
                 ? switch (level) {
                     1 => 'Send first warning?',
                     2 => 'Send second warning?',
@@ -387,14 +405,18 @@ class _UserTile extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(switch (level) {
-                1 =>
-                  'The creator will see a yellow warning and have 24 hours to resolve the issue.',
-                2 =>
-                  'The creator will see a red warning. Their storefront and products will be hidden, and adding products will be blocked.',
-                _ =>
-                  'The account email will be disabled and the user will be signed out.',
-              }),
+              Text(
+                immediate
+                    ? 'This skips all warning stages. The account will be disabled immediately, the user will be signed out, and any creator storefront and products will be hidden.'
+                    : switch (level) {
+                        1 =>
+                          'The creator will see a yellow warning and have 24 hours to resolve the issue.',
+                        2 =>
+                          'The creator will see a red warning. Their storefront and products will be hidden, and adding products will be blocked.',
+                        _ =>
+                          'The account email will be disabled and the user will be signed out.',
+                      },
+              ),
               const SizedBox(height: 16),
               TextField(
                 autofocus: true,
@@ -432,6 +454,7 @@ class _UserTile extends StatelessWidget {
           user.uid,
           level,
           reason: reason,
+          immediate: immediate,
           userLabel: user.name.trim().isEmpty
               ? user.email
               : '${user.name} (${user.email})',

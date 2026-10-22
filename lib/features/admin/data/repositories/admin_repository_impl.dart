@@ -82,6 +82,7 @@ class AdminRepositoryImpl implements AdminRepository {
     required String uid,
     required int level,
     required String reason,
+    bool immediate = false,
   }) => _guard(() async {
     // Warning stages remain admin-controlled Firestore writes and work
     // immediately. Only disabling/re-enabling Firebase Auth needs the
@@ -91,6 +92,7 @@ class AdminRepositoryImpl implements AdminRepository {
         uid: uid,
         level: level,
         reason: reason,
+        immediate: immediate,
       );
     }
     await remoteDataSource.setModerationState(

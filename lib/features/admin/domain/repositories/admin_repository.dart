@@ -29,6 +29,7 @@ abstract interface class AdminRepository {
     required String uid,
     required int level,
     required String reason,
+    bool immediate = false,
   });
   Future<Either<Failure, void>> reviewProduct({
     required String productId,
