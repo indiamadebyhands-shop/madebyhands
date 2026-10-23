@@ -43,7 +43,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             : const Icon(Icons.add),
-        label: Text(_startingTicket ? 'Loading orders' : 'Raise ticket'),
+        label: Text(_startingTicket ? 'Loading options' : 'Raise ticket'),
       ),
       body: StreamBuilder<List<SupportTicket>>(
         stream: _tickets,
@@ -93,11 +93,15 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     setState(() => _startingTicket = true);
     final messenger = ScaffoldMessenger.of(context);
     List<SupportOrderReference> orders;
+    List<SupportProductReference> products = const [];
     try {
       orders = await widget.repository.getValidOrders(
         userId: widget.user.uid,
         userRole: widget.user.role,
       );
+      if (widget.user.isCreator) {
+        products = await widget.repository.getCreatorProducts(widget.user.uid);
+      }
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
@@ -113,60 +117,79 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
       context: context,
       showDragHandle: true,
       builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'How can we help?',
-                style: Theme.of(
-                  sheetContext,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              _SupportTopicTile(
-                icon: Icons.shopping_bag_outlined,
-                title: 'Need help with my order',
-                subtitle: 'Choose an order to share with support',
-                onTap: () => Navigator.pop(sheetContext, _SupportTopic.order),
-              ),
-              const SizedBox(height: 10),
-              _SupportTopicTile(
-                icon: Icons.chat_bubble_outline,
-                title: 'I need help with something else',
-                subtitle: 'Describe another issue',
-                onTap: () => Navigator.pop(sheetContext, _SupportTopic.general),
-              ),
-            ],
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'How can we help?',
+                  style: Theme.of(
+                    sheetContext,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                if (widget.user.isCreator) ...[
+                  _SupportTopicTile(
+                    icon: Icons.inventory_2_outlined,
+                    title: 'Product related',
+                    subtitle: 'Choose one of your products',
+                    onTap: () =>
+                        Navigator.pop(sheetContext, _SupportTopic.product),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                _SupportTopicTile(
+                  icon: Icons.shopping_bag_outlined,
+                  title: widget.user.isCreator
+                      ? 'Order related'
+                      : 'Need help with my order',
+                  subtitle: 'Choose an order to share with support',
+                  onTap: () => Navigator.pop(sheetContext, _SupportTopic.order),
+                ),
+                const SizedBox(height: 10),
+                _SupportTopicTile(
+                  icon: Icons.chat_bubble_outline,
+                  title: widget.user.isCreator
+                      ? 'Other'
+                      : 'I need help with something else',
+                  subtitle: 'Describe another issue',
+                  onTap: () =>
+                      Navigator.pop(sheetContext, _SupportTopic.general),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
     if (!mounted || choice == null) return;
+    if (choice == _SupportTopic.product) {
+      if (products.isEmpty) {
+        final continueWithoutProduct = await _showEmptySelection(
+          title: 'You have no products',
+          message:
+              'You can still tell us what you need help with and continue the chat normally.',
+        );
+        if (!mounted || !continueWithoutProduct) return;
+        await _createGeneralTicket();
+        return;
+      }
+      final selectedProduct = await _selectProduct(products);
+      if (!mounted || selectedProduct == null) return;
+      await _createProductTicket(selectedProduct);
+      return;
+    }
     if (choice == _SupportTopic.order) {
       if (orders.isEmpty) {
-        final continueWithoutOrder = await showDialog<bool>(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: const Text('You have no orders'),
-            content: const Text(
+        final continueWithoutOrder = await _showEmptySelection(
+          title: 'You have no orders',
+          message:
               'You can still tell us what you need help with and continue the chat normally.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(dialogContext, true),
-                child: const Text('Continue'),
-              ),
-            ],
-          ),
         );
-        if (!mounted || continueWithoutOrder != true) return;
+        if (!mounted || !continueWithoutOrder) return;
         await _createGeneralTicket();
         return;
       }
@@ -177,6 +200,100 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     }
     await _createGeneralTicket();
   }
+
+  Future<bool> _showEmptySelection({
+    required String title,
+    required String message,
+  }) async =>
+      await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Continue'),
+            ),
+          ],
+        ),
+      ) ??
+      false;
+
+  Future<SupportProductReference?> _selectProduct(
+    List<SupportProductReference> products,
+  ) => showModalBottomSheet<SupportProductReference>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (sheetContext) => SafeArea(
+      child: FractionallySizedBox(
+        heightFactor: 0.8,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: Text(
+                'Select a product',
+                style: Theme.of(
+                  sheetContext,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ),
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                itemCount: products.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                itemBuilder: (_, index) {
+                  final product = products[index];
+                  return Card(
+                    margin: EdgeInsets.zero,
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      onTap: () => Navigator.pop(sheetContext, product),
+                      leading: const CircleAvatar(
+                        child: Icon(Icons.inventory_2_outlined),
+                      ),
+                      title: Text(
+                        product.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        '${_displayStatus(product.status)}  •  '
+                        '${product.isActive ? 'Visible' : 'Hidden'}',
+                      ),
+                      trailing: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '₹${product.price}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const Icon(Icons.chevron_right),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 
   Future<SupportOrderReference?> _selectOrder(
     List<SupportOrderReference> orders,
@@ -270,6 +387,26 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     );
   }
 
+  Future<void> _createProductTicket(SupportProductReference product) async {
+    final subject = 'Help with product: ${product.displayName}';
+    final message = [
+      'I need help with this product.',
+      '',
+      'Product ID: ${product.id}',
+      'Product: ${product.displayName}',
+      'Status: ${_displayStatus(product.status)}',
+      'Price: ₹${product.price}',
+      'Visibility: ${product.isActive ? 'Visible' : 'Hidden'}',
+      'Account type: Creator',
+    ].join('\n');
+    await _submitTicket(
+      subject: subject,
+      message: message,
+      type: 'product',
+      productId: product.id,
+    );
+  }
+
   Future<void> _createGeneralTicket() async {
     var subject = '';
     var message = '';
@@ -334,6 +471,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     required String message,
     String type = 'general',
     String? orderId,
+    String? productId,
   }) async {
     if (_startingTicket) return;
     setState(() => _startingTicket = true);
@@ -347,6 +485,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
         message: message,
         type: type,
         orderId: orderId,
+        productId: productId,
       );
       if (!mounted) return;
       messenger.showSnackBar(
@@ -401,7 +540,7 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
   }
 }
 
-enum _SupportTopic { order, general }
+enum _SupportTopic { product, order, general }
 
 class _SupportTopicTile extends StatelessWidget {
   final IconData icon;

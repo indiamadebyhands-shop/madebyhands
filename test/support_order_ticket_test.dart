@@ -12,6 +12,12 @@ void main() {
     name: 'Test Buyer',
     role: 'buyer',
   );
+  final creator = UserEntity(
+    uid: 'creator-1',
+    email: 'creator@example.com',
+    name: 'Test Creator',
+    role: 'creator',
+  );
 
   testWidgets('buyer can attach an eligible order to a support ticket', (
     tester,
@@ -91,15 +97,62 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('creator can attach one of their products to a ticket', (
+    tester,
+  ) async {
+    final repository = _FakeSupportRepository(
+      products: const [
+        SupportProductReference(
+          id: 'product-1',
+          name: 'Hand-painted clay bowl',
+          status: 'Approved',
+          price: 899,
+          isActive: true,
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SupportCenterPage(user: creator, repository: repository),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Raise ticket'));
+    await tester.pumpAndSettle();
+    expect(find.text('Product related'), findsOneWidget);
+    expect(find.text('Order related'), findsOneWidget);
+    expect(find.text('Other'), findsOneWidget);
+
+    await tester.tap(find.text('Product related'));
+    await tester.pumpAndSettle();
+    expect(find.text('Select a product'), findsOneWidget);
+    expect(find.text('Hand-painted clay bowl'), findsOneWidget);
+
+    await tester.tap(find.text('Hand-painted clay bowl'));
+    await tester.pumpAndSettle();
+
+    expect(repository.createdType, 'product');
+    expect(repository.createdProductId, 'product-1');
+    expect(repository.createdMessage, contains('Product ID: product-1'));
+    expect(repository.createdMessage, contains('Status: Approved'));
+    expect(
+      find.text('Help with product: Hand-painted clay bowl'),
+      findsOneWidget,
+    );
+  });
 }
 
 class _FakeSupportRepository implements SupportRepository {
   final List<SupportOrderReference> orders;
+  final List<SupportProductReference> products;
   String? createdType;
   String? createdOrderId;
+  String? createdProductId;
   String? createdMessage;
 
-  _FakeSupportRepository({this.orders = const []});
+  _FakeSupportRepository({this.orders = const [], this.products = const []});
 
   @override
   Future<String> createTicket({
@@ -110,9 +163,11 @@ class _FakeSupportRepository implements SupportRepository {
     required String message,
     String type = 'general',
     String? orderId,
+    String? productId,
   }) async {
     createdType = type;
     createdOrderId = orderId;
+    createdProductId = productId;
     createdMessage = message;
     return 'ticket-1';
   }
@@ -122,6 +177,11 @@ class _FakeSupportRepository implements SupportRepository {
     required String userId,
     required String userRole,
   }) async => orders;
+
+  @override
+  Future<List<SupportProductReference>> getCreatorProducts(
+    String creatorId,
+  ) async => products;
 
   @override
   Future<void> resolveTicket(String ticketId) async {}
