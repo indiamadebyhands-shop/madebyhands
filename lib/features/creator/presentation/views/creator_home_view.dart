@@ -369,14 +369,14 @@ class _BannerCropDialog extends StatefulWidget {
 }
 
 class _BannerCropDialogState extends State<_BannerCropDialog> {
-  double _scale = 1.0;
-  double _baseScale = 1.0;
-  Offset _offset = Offset.zero;
-  Offset _baseOffset = Offset.zero;
-  Offset _startFocalPoint = Offset.zero;
-
+  final TransformationController _transformationController =
+      TransformationController();
   ui.Image? _decodedSourceImage;
   bool _isCropping = false;
+  double _activeCropW = 0.0;
+  double _activeCropH = 0.0;
+  double _activeViewportW = 0.0;
+  double _activeViewportH = 0.0;
 
   @override
   void initState() {
@@ -384,11 +384,15 @@ class _BannerCropDialogState extends State<_BannerCropDialog> {
     _loadSourceImage();
   }
 
+  @override
+  void dispose() {
+    _transformationController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadSourceImage() async {
     try {
-      final bytes = kIsWeb
-          ? await XFile(widget.imageFile.path).readAsBytes()
-          : await widget.imageFile.readAsBytes();
+      final bytes = await XFile(widget.imageFile.path).readAsBytes();
       final codec = await ui.instantiateImageCodec(bytes);
       final frame = await codec.getNextFrame();
       if (mounted) {
@@ -396,17 +400,30 @@ class _BannerCropDialogState extends State<_BannerCropDialog> {
           _decodedSourceImage = frame.image;
         });
       }
-    } catch (_) {}
+    } catch (_) {
+      try {
+        final bytes = await widget.imageFile.readAsBytes();
+        final codec = await ui.instantiateImageCodec(bytes);
+        final frame = await codec.getNextFrame();
+        if (mounted) {
+          setState(() {
+            _decodedSourceImage = frame.image;
+          });
+        }
+      } catch (_) {}
+    }
   }
 
   void _resetPosition() {
-    setState(() {
-      _scale = 1.0;
-      _offset = Offset.zero;
-    });
+    _transformationController.value = Matrix4.identity();
   }
 
-  Future<void> _saveAndConfirmCrop(double cropW, double cropH) async {
+  Future<void> _saveAndConfirmCrop(
+    double cropW,
+    double cropH,
+    double viewportW,
+    double viewportH,
+  ) async {
     if (_decodedSourceImage == null) return;
     setState(() => _isCropping = true);
 
@@ -426,16 +443,23 @@ class _BannerCropDialogState extends State<_BannerCropDialog> {
         baseH = cropW / imageRatio;
       }
 
-      final double currentW = baseW * _scale;
-      final double currentH = baseH * _scale;
+      final Matrix4 transform = _transformationController.value;
+      final double scale = transform.getMaxScaleOnAxis();
+      final double tx = transform.storage[12];
+      final double ty = transform.storage[13];
 
-      final double cropLeftInScaled = (currentW - cropW) / 2 - _offset.dx;
-      final double cropTopInScaled = (currentH - cropH) / 2 - _offset.dy;
+      final double u = ((viewportW - cropW) / 2.0 - tx) / scale -
+          (viewportW - baseW) / 2.0;
+      final double v = ((viewportH - cropH) / 2.0 - ty) / scale -
+          (viewportH - baseH) / 2.0;
 
-      final double normX = (cropLeftInScaled / currentW).clamp(0.0, 1.0);
-      final double normY = (cropTopInScaled / currentH).clamp(0.0, 1.0);
-      final double normW = (cropW / currentW).clamp(0.0, 1.0);
-      final double normH = (cropH / currentH).clamp(0.0, 1.0);
+      final double deltaU = cropW / scale;
+      final double deltaV = cropH / scale;
+
+      final double normX = (u / baseW).clamp(0.0, 1.0);
+      final double normY = (v / baseH).clamp(0.0, 1.0);
+      final double normW = (deltaU / baseW).clamp(0.0, 1.0);
+      final double normH = (deltaV / baseH).clamp(0.0, 1.0);
 
       final double srcCropX = normX * srcW;
       final double srcCropY = normY * srcH;
@@ -566,6 +590,11 @@ class _BannerCropDialogState extends State<_BannerCropDialog> {
                       cropW = maxW;
                       cropH = maxW / targetRatio;
                     }
+                    _activeCropW = cropW;
+                    _activeCropH = cropH;
+                    _activeViewportW = constraints.maxWidth;
+                    _activeViewportH = constraints.maxHeight;
+
                     final cropRect = Rect.fromCenter(
                       center: Offset(
                         constraints.maxWidth / 2,
@@ -590,78 +619,46 @@ class _BannerCropDialogState extends State<_BannerCropDialog> {
                       baseH = cropW / imageRatio;
                     }
 
-                    final double currentW = baseW * _scale;
-                    final double currentH = baseH * _scale;
+                    final double marginH = (constraints.maxWidth - cropW) / 2;
+                    final double marginV = (constraints.maxHeight - cropH) / 2;
 
-                    final double maxPanX = (currentW - cropW) / 2;
-                    final double maxPanY = (currentH - cropH) / 2;
-
-                    final double clampedDx =
-                        _offset.dx.clamp(-maxPanX, maxPanX);
-                    final double clampedDy =
-                        _offset.dy.clamp(-maxPanY, maxPanY);
-
-                    final effectiveOffset = Offset(clampedDx, clampedDy);
-
-                    return GestureDetector(
-                      onScaleStart: (details) {
-                        _baseScale = _scale;
-                        _baseOffset = _offset;
-                        _startFocalPoint = details.focalPoint;
-                      },
-                      onScaleUpdate: (details) {
-                        setState(() {
-                          final double newScale =
-                              (_baseScale * details.scale).clamp(1.0, 4.0);
-                          final Offset delta =
-                              details.focalPoint - _startFocalPoint;
-                          final Offset newOffset = _baseOffset + delta;
-
-                          final double curW = baseW * newScale;
-                          final double curH = baseH * newScale;
-                          final double maxPx = (curW - cropW) / 2;
-                          final double maxPy = (curH - cropH) / 2;
-
-                          _scale = newScale;
-                          _offset = Offset(
-                            newOffset.dx.clamp(-maxPx, maxPx),
-                            newOffset.dy.clamp(-maxPy, maxPy),
-                          );
-                        });
-                      },
-                      child: Stack(
-                        children: [
-                          Positioned.fill(
-                            child: Container(
-                              color: Colors.transparent,
-                              child: Center(
-                                child: Transform.translate(
-                                  offset: effectiveOffset,
-                                  child: SizedBox(
-                                    width: currentW,
-                                    height: currentH,
-                                    child: _buildCropFileImageWidget(
-                                      widget.imageFile,
-                                      width: currentW,
-                                      height: currentH,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
+                    return Stack(
+                      children: [
+                        Positioned.fill(
+                          child: InteractiveViewer(
+                            transformationController:
+                                _transformationController,
+                            minScale: 1.0,
+                            maxScale: 4.0,
+                            boundaryMargin: EdgeInsets.symmetric(
+                              horizontal: marginH,
+                              vertical: marginV,
+                            ),
+                            clipBehavior: Clip.none,
+                            child: Center(
+                              child: SizedBox(
+                                width: baseW,
+                                height: baseH,
+                                child: _buildCropFileImageWidget(
+                                  widget.imageFile,
+                                  width: baseW,
+                                  height: baseH,
+                                  fit: BoxFit.cover,
                                 ),
                               ),
                             ),
                           ),
-                          Positioned.fill(
-                            child: IgnorePointer(
-                              child: CustomPaint(
-                                painter: _BannerCropOverlayMaskPainter(
-                                  cropRect: cropRect,
-                                ),
+                        ),
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: CustomPaint(
+                              painter: _BannerCropOverlayMaskPainter(
+                                cropRect: cropRect,
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     );
                   },
                 ),
@@ -700,57 +697,42 @@ class _BannerCropDialogState extends State<_BannerCropDialog> {
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        return FilledButton.icon(
-                          onPressed:
-                              (_isCropping || _decodedSourceImage == null)
-                                  ? null
-                                  : () {
-                                      const double padding = 24.0;
-                                      final double maxW =
-                                          MediaQuery.of(context).size.width -
-                                              (padding * 2);
-                                      final double maxH =
-                                          MediaQuery.of(context).size.height *
-                                              0.5;
-                                      double cW, cH;
-                                      if (maxW / maxH > targetRatio) {
-                                        cH = maxH;
-                                        cW = maxH * targetRatio;
-                                      } else {
-                                        cW = maxW;
-                                        cH = maxW / targetRatio;
-                                      }
-                                      _saveAndConfirmCrop(cW, cH);
-                                    },
-                          icon: _isCropping
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Icon(Icons.check, size: 18),
-                          label: const Text(
-                            'Save',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                            ),
-                          ),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF8B261D),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        );
-                      },
+                    child: FilledButton.icon(
+                      onPressed: (_isCropping || _decodedSourceImage == null)
+                          ? null
+                          : () {
+                              _saveAndConfirmCrop(
+                                _activeCropW,
+                                _activeCropH,
+                                _activeViewportW,
+                                _activeViewportH,
+                              );
+                            },
+                      icon: _isCropping
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.check, size: 18),
+                      label: const Text(
+                        'Save',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF8B261D),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
                     ),
                   ),
                 ],
