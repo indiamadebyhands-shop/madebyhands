@@ -10,6 +10,8 @@ abstract class SupportRepository {
     required String userRole,
   });
 
+  Future<List<SupportProductReference>> getCreatorProducts(String creatorId);
+
   Future<String> createTicket({
     required String userId,
     required String userRole,
@@ -18,6 +20,7 @@ abstract class SupportRepository {
     required String message,
     String type = 'general',
     String? orderId,
+    String? productId,
   });
 
   Future<void> sendMessage({

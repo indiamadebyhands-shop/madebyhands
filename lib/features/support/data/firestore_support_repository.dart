@@ -96,6 +96,38 @@ class FirestoreSupportRepository implements SupportRepository {
   }
 
   @override
+  Future<List<SupportProductReference>> getCreatorProducts(
+    String creatorId,
+  ) async {
+    final documents = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
+    for (final ownerField in const ['creatorUid', 'creatorId']) {
+      final snapshot = await firestore
+          .collection('products')
+          .where(ownerField, isEqualTo: creatorId)
+          .get();
+      for (final document in snapshot.docs) {
+        documents[document.id] = document;
+      }
+    }
+    final products =
+        documents.values.map((document) {
+          final data = document.data();
+          return SupportProductReference(
+            id: document.id,
+            name: data['name'] as String? ?? '',
+            status: data['status'] as String? ?? 'Draft',
+            price: (data['price'] as num?)?.round() ?? 0,
+            isActive: data['isActive'] as bool? ?? false,
+          );
+        }).toList()..sort(
+          (a, b) => a.displayName.toLowerCase().compareTo(
+            b.displayName.toLowerCase(),
+          ),
+        );
+    return products;
+  }
+
+  @override
   Future<String> createTicket({
     required String userId,
     required String userRole,
@@ -104,6 +136,7 @@ class FirestoreSupportRepository implements SupportRepository {
     required String message,
     String type = 'general',
     String? orderId,
+    String? productId,
   }) async {
     final ticket = _tickets.doc();
     final batch = firestore.batch();
@@ -115,6 +148,7 @@ class FirestoreSupportRepository implements SupportRepository {
       'subject': subject,
       'type': type,
       if (orderId != null && orderId.isNotEmpty) 'orderId': orderId,
+      if (productId != null && productId.isNotEmpty) 'productId': productId,
       'status': 'open',
       'lastMessage': message,
       'createdAt': FieldValue.serverTimestamp(),

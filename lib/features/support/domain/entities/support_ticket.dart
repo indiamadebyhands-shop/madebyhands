@@ -60,3 +60,22 @@ class SupportOrderReference {
       ? id.substring(id.length - 8).toUpperCase()
       : id.toUpperCase();
 }
+
+/// Minimal creator-owned product information safe to attach to support.
+class SupportProductReference {
+  final String id;
+  final String name;
+  final String status;
+  final int price;
+  final bool isActive;
+
+  const SupportProductReference({
+    required this.id,
+    required this.name,
+    required this.status,
+    required this.price,
+    required this.isActive,
+  });
+
+  String get displayName => name.trim().isEmpty ? 'Unnamed product' : name;
+}
