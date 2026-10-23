@@ -109,11 +109,6 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     }
     if (!mounted) return;
 
-    if (orders.isEmpty) {
-      await _createGeneralTicket();
-      return;
-    }
-
     final choice = await showModalBottomSheet<_SupportTopic>(
       context: context,
       showDragHandle: true,
@@ -151,6 +146,30 @@ class _SupportCenterPageState extends State<SupportCenterPage> {
     );
     if (!mounted || choice == null) return;
     if (choice == _SupportTopic.order) {
+      if (orders.isEmpty) {
+        final continueWithoutOrder = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('You have no orders'),
+            content: const Text(
+              'You can still tell us what you need help with and continue the chat normally.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Continue'),
+              ),
+            ],
+          ),
+        );
+        if (!mounted || continueWithoutOrder != true) return;
+        await _createGeneralTicket();
+        return;
+      }
       final selectedOrder = await _selectOrder(orders);
       if (!mounted || selectedOrder == null) return;
       await _createOrderTicket(selectedOrder);

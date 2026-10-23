@@ -55,7 +55,7 @@ void main() {
     expect(find.text('Help with order #12345678'), findsOneWidget);
   });
 
-  testWidgets('general ticket form opens directly when user has no orders', (
+  testWidgets('user without orders can continue to a general ticket', (
     tester,
   ) async {
     final repository = _FakeSupportRepository();
@@ -69,8 +69,21 @@ void main() {
     await tester.tap(find.text('Raise ticket'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Need help with my order'), findsNothing);
-    expect(find.text('I need help with something else'), findsNothing);
+    expect(find.text('Need help with my order'), findsOneWidget);
+    expect(find.text('I need help with something else'), findsOneWidget);
+
+    await tester.tap(find.text('Need help with my order'));
+    await tester.pumpAndSettle();
+    expect(find.text('You have no orders'), findsOneWidget);
+    expect(
+      find.text(
+        'You can still tell us what you need help with and continue the chat normally.',
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
     expect(find.text('Raise a support ticket'), findsOneWidget);
     expect(find.widgetWithText(TextFormField, 'Subject'), findsOneWidget);
     expect(
