@@ -981,8 +981,6 @@ class _ImageCropPreviewDialogState extends State<_ImageCropPreviewDialog> {
   bool _isCropping = false;
   double _activeCropW = 0.0;
   double _activeCropH = 0.0;
-  double _activeViewportW = 0.0;
-  double _activeViewportH = 0.0;
 
   @override
   void initState() {
@@ -1024,12 +1022,7 @@ class _ImageCropPreviewDialogState extends State<_ImageCropPreviewDialog> {
     _transformationController.value = Matrix4.identity();
   }
 
-  Future<void> _saveAndConfirmCrop(
-    double cropW,
-    double cropH,
-    double viewportW,
-    double viewportH,
-  ) async {
+  Future<void> _saveAndConfirmCrop(double cropW, double cropH) async {
     if (_decodedSourceImage == null) return;
     setState(() => _isCropping = true);
 
@@ -1053,10 +1046,8 @@ class _ImageCropPreviewDialogState extends State<_ImageCropPreviewDialog> {
       final double tx = transform.storage[12];
       final double ty = transform.storage[13];
 
-      final double u = ((viewportW - cropW) / 2.0 - tx) / scale -
-          (viewportW - baseW) / 2.0;
-      final double v = ((viewportH - cropH) / 2.0 - ty) / scale -
-          (viewportH - baseH) / 2.0;
+      final double u = (baseW - cropW) / 2.0 - tx / scale;
+      final double v = (baseH - cropH) / 2.0 - ty / scale;
 
       final double deltaU = cropW / scale;
       final double deltaV = cropH / scale;
@@ -1169,8 +1160,6 @@ class _ImageCropPreviewDialogState extends State<_ImageCropPreviewDialog> {
                     }
                     _activeCropW = cropW;
                     _activeCropH = cropH;
-                    _activeViewportW = constraints.maxWidth;
-                    _activeViewportH = constraints.maxHeight;
 
                     final cropRect = Rect.fromCenter(
                       center: Offset(
@@ -1196,21 +1185,19 @@ class _ImageCropPreviewDialogState extends State<_ImageCropPreviewDialog> {
                       baseH = cropW / imageRatio;
                     }
 
-                    final double marginH = (constraints.maxWidth - cropW) / 2;
-                    final double marginV = (constraints.maxHeight - cropH) / 2;
-
                     return Stack(
                       children: [
-                        Positioned.fill(
+                        Positioned(
+                          left: cropRect.left,
+                          top: cropRect.top,
+                          width: cropW,
+                          height: cropH,
                           child: InteractiveViewer(
                             transformationController:
                                 _transformationController,
                             minScale: 1.0,
                             maxScale: 4.0,
-                            boundaryMargin: EdgeInsets.symmetric(
-                              horizontal: marginH,
-                              vertical: marginV,
-                            ),
+                            boundaryMargin: EdgeInsets.zero,
                             clipBehavior: Clip.none,
                             child: Center(
                               child: SizedBox(
@@ -1279,12 +1266,7 @@ class _ImageCropPreviewDialogState extends State<_ImageCropPreviewDialog> {
                       onPressed: (_isCropping || _decodedSourceImage == null)
                           ? null
                           : () {
-                              _saveAndConfirmCrop(
-                                _activeCropW,
-                                _activeCropH,
-                                _activeViewportW,
-                                _activeViewportH,
-                              );
+                              _saveAndConfirmCrop(_activeCropW, _activeCropH);
                             },
                       icon: _isCropping
                           ? const SizedBox(

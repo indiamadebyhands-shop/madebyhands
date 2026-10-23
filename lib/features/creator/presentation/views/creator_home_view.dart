@@ -418,12 +418,7 @@ class _BannerCropDialogState extends State<_BannerCropDialog> {
     _transformationController.value = Matrix4.identity();
   }
 
-  Future<void> _saveAndConfirmCrop(
-    double cropW,
-    double cropH,
-    double viewportW,
-    double viewportH,
-  ) async {
+  Future<void> _saveAndConfirmCrop(double cropW, double cropH) async {
     if (_decodedSourceImage == null) return;
     setState(() => _isCropping = true);
 
@@ -448,10 +443,8 @@ class _BannerCropDialogState extends State<_BannerCropDialog> {
       final double tx = transform.storage[12];
       final double ty = transform.storage[13];
 
-      final double u = ((viewportW - cropW) / 2.0 - tx) / scale -
-          (viewportW - baseW) / 2.0;
-      final double v = ((viewportH - cropH) / 2.0 - ty) / scale -
-          (viewportH - baseH) / 2.0;
+      final double u = (baseW - cropW) / 2.0 - tx / scale;
+      final double v = (baseH - cropH) / 2.0 - ty / scale;
 
       final double deltaU = cropW / scale;
       final double deltaV = cropH / scale;
@@ -704,8 +697,6 @@ class _BannerCropDialogState extends State<_BannerCropDialog> {
                               _saveAndConfirmCrop(
                                 _activeCropW,
                                 _activeCropH,
-                                _activeViewportW,
-                                _activeViewportH,
                               );
                             },
                       icon: _isCropping
