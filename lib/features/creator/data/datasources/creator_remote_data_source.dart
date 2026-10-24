@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:madebyhands/core/services/notification_messaging_service.dart';
 import 'package:madebyhands/features/creator/data/models/creator_bank_account_model.dart';
 import 'package:madebyhands/features/creator/data/models/creator_notification_model.dart';
 import 'package:madebyhands/features/creator/data/models/creator_order_model.dart';
@@ -260,6 +261,15 @@ class CreatorRemoteDataSourceImpl implements CreatorRemoteDataSource {
       'isRead': false,
     });
     await batch.commit();
+
+    NotificationMessagingService.sendPushNotification(
+      targetUserId: 'admin',
+      title: 'New creator verification request',
+      message:
+          '${creatorName.isEmpty ? 'A creator' : creatorName} submitted verification documents.',
+      category: 'creator_verification',
+      targetId: uid,
+    );
   }
 
   @override
@@ -284,6 +294,15 @@ class CreatorRemoteDataSourceImpl implements CreatorRemoteDataSource {
       'isRead': false,
     });
     await batch.commit();
+
+    NotificationMessagingService.sendPushNotification(
+      targetUserId: 'admin',
+      title: 'New product awaiting review',
+      message:
+          '${product.creatorName.isEmpty ? 'A creator' : product.creatorName} submitted "${product.name}" for approval.',
+      category: 'product_submission',
+      targetId: productRef.id,
+    );
   }
 
   @override
@@ -362,9 +381,9 @@ class CreatorRemoteDataSourceImpl implements CreatorRemoteDataSource {
     String status, {
     String? consignmentNumber,
     String? carrierName,
-  }) {
+  }) async {
     final stored = OrderStatus.storedValue(status);
-    return firestore.collection('orders').doc(orderId).update({
+    await firestore.collection('orders').doc(orderId).update({
       'status': stored,
       'updatedAt': FieldValue.serverTimestamp(),
       if (consignmentNumber != null && consignmentNumber.trim().isNotEmpty)
@@ -374,6 +393,39 @@ class CreatorRemoteDataSourceImpl implements CreatorRemoteDataSource {
       if (OrderStatus.isDelivered(stored))
         'deliveredAt': FieldValue.serverTimestamp(),
     });
+
+    try {
+      final orderDoc = await firestore.collection('orders').doc(orderId).get();
+      if (orderDoc.exists) {
+        final data = orderDoc.data();
+        final buyerUid =
+            data?['buyerUid'] as String? ?? data?['userId'] as String? ?? '';
+        final shortId = data?['shortId'] as String? ?? '';
+        final displayStatus = OrderStatus.label(stored);
+        if (buyerUid.isNotEmpty) {
+          final msg =
+              'Order #${shortId.isNotEmpty ? shortId : orderId} status changed to $displayStatus.';
+          await firestore.collection('notifications').add({
+            'userId': buyerUid,
+            'creatorUid': buyerUid,
+            'type': 'order',
+            'category': 'order',
+            'title': 'Order Status Updated',
+            'message': msg,
+            'targetId': orderId,
+            'createdAt': FieldValue.serverTimestamp(),
+            'isRead': false,
+          });
+          NotificationMessagingService.sendPushNotification(
+            targetUserId: buyerUid,
+            title: 'Order Status Updated',
+            message: msg,
+            category: 'order',
+            targetId: orderId,
+          );
+        }
+      }
+    } catch (_) {}
   }
 
   @override

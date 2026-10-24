@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:madebyhands/core/error/failures.dart';
+import 'package:madebyhands/core/services/notification_messaging_service.dart';
 import 'package:madebyhands/core/theme/app_theme.dart';
 import 'package:madebyhands/features/admin/domain/entities/admin_log_entry.dart';
 import 'package:madebyhands/features/admin/domain/repositories/admin_log_repository.dart';
@@ -613,6 +614,16 @@ Future<void> _showReleaseSheet(BuildContext context, _PayoutOrder order) async {
                           );
                         }
                         await batch.commit();
+                        if (order.creatorId.isNotEmpty) {
+                          NotificationMessagingService.sendPushNotification(
+                            targetUserId: order.creatorId,
+                            title: 'Payout released',
+                            message:
+                                '₹${order.amount} for Order #${order.shortId} has been paid out to your account.',
+                            category: 'payout',
+                            targetId: order.id,
+                          );
+                        }
                         await serviceLocator<AdminLogRepository>().log(
                           category: AdminLogCategory.payout,
                           action: 'payout.released',
