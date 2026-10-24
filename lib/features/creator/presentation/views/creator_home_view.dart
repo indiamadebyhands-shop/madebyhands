@@ -79,6 +79,7 @@ class _PortfolioBanner extends StatefulWidget {
 
 class _PortfolioBannerState extends State<_PortfolioBanner> {
   late final PageController _pageController;
+  bool _isUploading = false;
 
   @override
   void initState() {
@@ -93,6 +94,8 @@ class _PortfolioBannerState extends State<_PortfolioBanner> {
   }
 
   Future<void> _changeBannerImage(BuildContext context) async {
+    if (_isUploading) return;
+
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(
       source: ImageSource.gallery,
@@ -110,6 +113,8 @@ class _PortfolioBannerState extends State<_PortfolioBanner> {
         ),
       );
       if (croppedFile != null && context.mounted) {
+        setState(() => _isUploading = true);
+
         final profile = widget.profile;
         context.read<CreatorBloc>().add(
               CreatorSubmitOnboarding(
@@ -165,6 +170,38 @@ class _PortfolioBannerState extends State<_PortfolioBanner> {
   Widget build(BuildContext context) {
     final portfolio = widget.profile.portfolio;
 
+    return BlocListener<CreatorBloc, CreatorState>(
+      listenWhen: (previous, current) =>
+          _isUploading &&
+          previous.actionId != current.actionId &&
+          current.action == CreatorAction.saveProfile &&
+          current.actionStatus != CreatorActionStatus.inProgress,
+      listener: (context, state) {
+        if (!mounted) return;
+        setState(() => _isUploading = false);
+
+        final messenger = ScaffoldMessenger.of(context);
+        if (state.actionStatus == CreatorActionStatus.failure) {
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(
+                state.actionMessage ?? 'Could not update banner image right now.',
+              ),
+            ),
+          );
+        } else if (state.actionStatus == CreatorActionStatus.success) {
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('Banner image updated successfully.'),
+            ),
+          );
+        }
+      },
+      child: _buildBannerContent(context, portfolio),
+    );
+  }
+
+  Widget _buildBannerContent(BuildContext context, List<String> portfolio) {
     if (portfolio.isEmpty) {
       return Container(
         decoration: BoxDecoration(
@@ -175,7 +212,7 @@ class _PortfolioBannerState extends State<_PortfolioBanner> {
           ),
         ),
         child: InkWell(
-          onTap: () => _changeBannerImage(context),
+          onTap: _isUploading ? null : () => _changeBannerImage(context),
           borderRadius: BorderRadius.circular(25),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
@@ -188,11 +225,22 @@ class _PortfolioBannerState extends State<_PortfolioBanner> {
                     color: const Color(0xFFF2DEDD),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Icon(
-                    Icons.collections_outlined,
-                    color: Color(0xFF8B261D),
-                    size: 30,
-                  ),
+                  child: _isUploading
+                      ? const Center(
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Color(0xFF8B261D),
+                            ),
+                          ),
+                        )
+                      : const Icon(
+                          Icons.collections_outlined,
+                          color: Color(0xFF8B261D),
+                          size: 30,
+                        ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -208,9 +256,11 @@ class _PortfolioBannerState extends State<_PortfolioBanner> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      const Text(
-                        'Add banner image in Profile to showcase your craft studio.',
-                        style: TextStyle(
+                      Text(
+                        _isUploading
+                            ? 'Uploading new banner image...'
+                            : 'Add banner image in Profile to showcase your craft studio.',
+                        style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.mutedText,
                           height: 1.3,
@@ -292,6 +342,35 @@ class _PortfolioBannerState extends State<_PortfolioBanner> {
                   );
                 },
               ),
+              if (_isUploading)
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 3,
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Updating banner...',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               Positioned(
                 top: 10,
                 right: 10,
@@ -301,16 +380,27 @@ class _PortfolioBannerState extends State<_PortfolioBanner> {
                     CircleAvatar(
                       radius: 15,
                       backgroundColor: Colors.transparent,
-                      child: IconButton(
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        icon: const Icon(
-                          Icons.camera_alt_outlined,
-                          size: 18,
-                          color: Color(0xFF8B261D),
-                        ),
-                        onPressed: () => _changeBannerImage(context),
-                      ),
+                      child: _isUploading
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Color(0xFF8B261D),
+                              ),
+                            )
+                          : IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              icon: const Icon(
+                                Icons.camera_alt_outlined,
+                                size: 18,
+                                color: Color(0xFF8B261D),
+                              ),
+                              onPressed: _isUploading
+                                  ? null
+                                  : () => _changeBannerImage(context),
+                            ),
                     ),
                     const SizedBox(width: 8),
                     Builder(
