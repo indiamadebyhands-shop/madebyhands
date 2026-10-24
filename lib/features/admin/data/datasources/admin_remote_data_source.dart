@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:madebyhands/core/constants/product_categories.dart';
+import 'package:madebyhands/core/services/notification_messaging_service.dart';
 import 'package:madebyhands/features/creator/data/models/creator_profile_model.dart';
 
 abstract interface class AdminRemoteDataSource {
@@ -92,6 +93,15 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
       'isRead': false,
     });
     await batch.commit();
+
+    NotificationMessagingService.sendPushNotification(
+      targetUserId: uid,
+      title: 'You are now a Verified Creator',
+      message:
+          'Your verification was approved. You can now list products for review.',
+      category: 'verification',
+      targetId: uid,
+    );
   }
 
   /// Rejects a pending request or revokes an existing verification. A
@@ -127,6 +137,14 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
       'isRead': false,
     });
     await batch.commit();
+
+    NotificationMessagingService.sendPushNotification(
+      targetUserId: uid,
+      title: 'Verification needs attention',
+      message: 'Your verification was not approved. Reason: $reason',
+      category: 'verification',
+      targetId: uid,
+    );
   }
 
   @override
@@ -298,19 +316,30 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
       'updatedAt': FieldValue.serverTimestamp(),
     });
     if (creatorUid.isNotEmpty) {
+      final notifTitle = approve ? 'Product approved' : 'Product needs changes';
+      final notifMessage = approve
+          ? (creatorVerified
+                ? '"$name" is now live in your storefront.'
+                : '"$name" was approved and will go live once your account is verified.')
+          : '"$name" was not approved. Reason: ${(rejectionReason ?? '').trim()}';
+
       batch.set(firestore.collection('notifications').doc(), {
         'creatorUid': creatorUid,
-        'title': approve ? 'Product approved' : 'Product needs changes',
-        'message': approve
-            ? (creatorVerified
-                  ? '"$name" is now live in your storefront.'
-                  : '"$name" was approved and will go live once your account is verified.')
-            : '"$name" was not approved. Reason: ${(rejectionReason ?? '').trim()}',
+        'title': notifTitle,
+        'message': notifMessage,
         'type': 'product',
         'targetId': productId,
         'createdAt': FieldValue.serverTimestamp(),
         'isRead': false,
       });
+
+      NotificationMessagingService.sendPushNotification(
+        targetUserId: creatorUid,
+        title: notifTitle,
+        message: notifMessage,
+        category: 'product',
+        targetId: productId,
+      );
     }
     await batch.commit();
   }

@@ -12,13 +12,16 @@ import 'package:madebyhands/features/auth/presentation/pages/role_selection_page
 import 'package:madebyhands/features/auth/presentation/pages/welcome_screen.dart';
 import 'package:madebyhands/features/buyer/presentation/bloc/buyer_bloc.dart';
 import 'package:madebyhands/features/buyer/presentation/pages/buyer_dashboard_page.dart';
+import 'package:madebyhands/features/buyer/presentation/pages/buyer_notifications_page.dart';
 import 'package:madebyhands/features/creator/presentation/bloc/creator_bloc.dart';
 import 'package:madebyhands/features/creator/presentation/pages/creator_flow_wrapper.dart';
+import 'package:madebyhands/features/creator/presentation/pages/creator_notifications_page.dart';
 import 'package:madebyhands/init_dependencies.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initDependencies();
+  await NotificationMessagingService.initializeSystem();
   runApp(
     MultiBlocProvider(
       providers: [
@@ -104,6 +107,7 @@ class _MyAppState extends State<MyApp> {
   Widget _homeFor(BuildContext context, UserEntity user) {
     NotificationMessagingService.instance.initialize(
       userId: user.uid,
+      role: user.role,
       onNotificationTap: (data) {
         final category = data['category'] as String?;
         if (user.isAdminOrManager) {
@@ -111,7 +115,9 @@ class _MyAppState extends State<MyApp> {
           if (category == 'creator_verification' ||
               category == 'verification') {
             section = 1;
-          } else if (category == 'product_approval' || category == 'product') {
+          } else if (category == 'product_approval' ||
+              category == 'product' ||
+              category == 'product_submission') {
             section = 2;
           } else if (category == 'order_rejected' || category == 'order') {
             section = 4;
@@ -124,6 +130,23 @@ class _MyAppState extends State<MyApp> {
           if (section != null) {
             context.read<AdminCubit>().changePage(section);
           }
+        } else if (user.isCreator) {
+          _navigatorKey.currentState?.push(
+            MaterialPageRoute(
+              builder: (_) => CreatorNotificationsPage(creatorUid: user.uid),
+            ),
+          );
+        } else {
+          _navigatorKey.currentState?.push(
+            MaterialPageRoute(
+              builder: (_) => BuyerNotificationsPage(
+                notifications: const [],
+                readNotificationIds: const {},
+                onNotificationTap: (_) {},
+                onMarkAllRead: () {},
+              ),
+            ),
+          );
         }
       },
     );
