@@ -82,15 +82,33 @@ service cloud.firestore {
         request.resource.data.get('uid', userId) == userId &&
         request.resource.data.get('isVerified', false) == false &&
         request.resource.data.get('isSuspended', false) == false &&
-        (request.resource.data.role in ['buyer', 'creator'] ||
+        ((request.resource.data.role in ['buyer', 'creator'] &&
+          request.resource.data.get('roles', [request.resource.data.role])
+            .hasOnly(['buyer', 'creator']) &&
+          request.resource.data.get('roles', [request.resource.data.role])
+            .hasAll([request.resource.data.role])) ||
           (request.resource.data.role == 'admin' && isRootSuperAdminEmail()));
 
       // Super admins manage roles. Managers may moderate (verify, suspend)
       // but never change anyone's role. Users edit only their contact info.
       allow update: if isSuperAdmin() ||
-        (isAdminOrManager() && !changedKeys().hasAny(['role'])) ||
+        (isAdminOrManager() && !changedKeys().hasAny(['role', 'roles'])) ||
         (signedIn() && request.auth.uid == userId &&
-          changedKeys().hasOnly(['name', 'phone', 'email', 'updatedAt']));
+          resource.data.role in ['buyer', 'creator', 'seller'] &&
+          changedKeys().hasOnly([
+            'name', 'phone', 'email', 'updatedAt', 'role', 'roles'
+          ]) &&
+          request.resource.data.role in ['buyer', 'creator'] &&
+          request.resource.data.get('roles', []).hasOnly(['buyer', 'creator']) &&
+          request.resource.data.get('roles', []).hasAll([
+            request.resource.data.role
+          ]) &&
+          request.resource.data.get('roles', []).hasAll(
+            resource.data.get(
+              'roles',
+              [resource.data.role == 'seller' ? 'creator' : resource.data.role]
+            )
+          ));
 
       allow delete: if signedIn() && (request.auth.uid == userId || isAdminOrManager());
 

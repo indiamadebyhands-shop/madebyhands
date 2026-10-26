@@ -73,6 +73,24 @@ class _CreatorProfileViewState extends State<CreatorProfileView> {
           onTap: () => _confirmAccountDeletion(profile),
         ),
         const SizedBox(height: 30),
+        ElevatedButton.icon(
+          onPressed: () => context.read<AuthBloc>().add(
+            AuthSignUpWithRoleRequested(
+              uid: widget.user.uid,
+              email: widget.user.email,
+              name: widget.user.name,
+              phone: widget.user.phone,
+              role: 'buyer',
+            ),
+          ),
+          icon: const Icon(Icons.swap_horiz_rounded),
+          label: const Text('Switch accounts'),
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 52),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          ),
+        ),
+        const SizedBox(height: 10),
         OutlinedButton.icon(
           onPressed: () => context.read<AuthBloc>().add(AuthLogoutRequested()),
           icon: const Icon(Icons.logout, color: Color(0xFF8B261D)),
