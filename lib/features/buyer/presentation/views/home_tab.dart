@@ -5,6 +5,7 @@ import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:madebyhands/features/buyer/domain/entities/product.dart';
 import 'package:madebyhands/features/buyer/domain/entities/saved_address.dart';
 import 'package:madebyhands/features/buyer/presentation/bloc/buyer_bloc.dart';
+import 'package:madebyhands/features/buyer/presentation/pages/story_detail_page.dart';
 import 'package:madebyhands/features/buyer/presentation/widgets/arch_backdrop.dart';
 import 'package:madebyhands/features/buyer/presentation/widgets/product_card.dart';
 
@@ -619,42 +620,92 @@ class _HomeTabState extends State<HomeTab> {
                 ),
               ),
             ),
-            // 3. Heading (Montserrat w700) & Description (Montserrat w400, 1-2 lines) at Bottom Left
+            // 3. Heading (Montserrat w700) & Description at Bottom Left
             Positioned(
               left: 16,
               right: 16,
               bottom: 16,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    story['title']!,
-                    style: GoogleFonts.montserrat(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                      height: 1.2,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (story['description'] != null &&
-                      story['description']!.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    Text(
-                      story['description']!,
-                      style: GoogleFonts.montserrat(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.white.withValues(alpha: 0.90),
-                        height: 1.3,
-                      ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final desc = story['description'] ?? '';
+                  final descStyle = GoogleFonts.montserrat(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.white.withValues(alpha: 0.90),
+                    height: 1.3,
+                  );
+
+                  bool isOverflowing = false;
+                  if (desc.isNotEmpty) {
+                    final textPainter = TextPainter(
+                      text: TextSpan(text: desc, style: descStyle),
                       maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ],
+                      textDirection: TextDirection.ltr,
+                    )..layout(maxWidth: constraints.maxWidth);
+                    isOverflowing = textPainter.didExceedMaxLines;
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        story['title']!,
+                        style: GoogleFonts.montserrat(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          height: 1.2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (desc.isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          desc,
+                          style: descStyle,
+                          maxLines: 2,
+                          overflow: TextOverflow.clip,
+                        ),
+                        if (isOverflowing) ...[
+                          const SizedBox(height: 4),
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => StoryDetailPage(story: story),
+                                ),
+                              );
+                            },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Read More',
+                                  style: GoogleFonts.montserrat(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFFE2D0B5),
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: const Color(0xFFE2D0B5),
+                                  ),
+                                ),
+                                const SizedBox(width: 2),
+                                const Icon(
+                                  Icons.chevron_right_rounded,
+                                  size: 14,
+                                  color: Color(0xFFE2D0B5),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ],
+                  );
+                },
               ),
             ),
           ],
