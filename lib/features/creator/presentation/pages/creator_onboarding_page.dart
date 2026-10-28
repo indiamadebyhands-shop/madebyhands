@@ -86,23 +86,137 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
   ];
 
   final List<String> _socialLinks = [];
+
+  late final String _initialName;
+  late final String _initialBio;
+  late final String _initialLocation;
+  late final String _initialStory;
+  late final String _initialState;
+  late final List<String> _initialSocialLinks;
+  late final List<String> _initialPortfolioUrls;
+  late final List<String> _initialExhibitionPictureUrls;
+
+  bool _isChangesSaved = false;
+
   @override
   void initState() {
     super.initState();
     final p = widget.existingProfile;
-    _nameController.text = p?.name ?? widget.user.name;
-    _bioController.text = p?.bio ?? '';
-    _locationController.text = p?.location ?? '';
-    _storyController.text = p?.story ?? '';
+    _initialName = p?.name ?? widget.user.name;
+    _initialBio = p?.bio ?? '';
+    _initialLocation = p?.location ?? '';
+    _initialStory = p?.story ?? '';
+    _initialState = p?.state ?? '';
+    _initialSocialLinks = List.from(p?.socialLinks ?? []);
+    _initialPortfolioUrls = List.from(p?.portfolio ?? []);
+    _initialExhibitionPictureUrls = List.from(p?.exhibitionPictures ?? []);
+
+    _nameController.text = _initialName;
+    _bioController.text = _initialBio;
+    _locationController.text = _initialLocation;
+    _storyController.text = _initialStory;
 
     if (p != null) {
       if (p.state.isNotEmpty && _indianStatesAndUTs.contains(p.state)) {
         _selectedState = p.state;
       }
-      _socialLinks.addAll(p.socialLinks);
-      _existingPortfolioUrls.addAll(p.portfolio);
-      _existingExhibitionPictureUrls.addAll(p.exhibitionPictures);
+      _socialLinks.addAll(_initialSocialLinks);
+      _existingPortfolioUrls.addAll(_initialPortfolioUrls);
+      _existingExhibitionPictureUrls.addAll(_initialExhibitionPictureUrls);
     }
+  }
+
+  bool get _hasUnsavedChanges {
+    if (_profileImage != null) return true;
+    if (_portfolioImages.isNotEmpty) return true;
+    if (_exhibitionImages.isNotEmpty) return true;
+
+    if (_nameController.text.trim() != _initialName.trim()) return true;
+    if (_bioController.text.trim() != _initialBio.trim()) return true;
+    if (_locationController.text.trim() != _initialLocation.trim()) return true;
+    if (_storyController.text.trim() != _initialStory.trim()) return true;
+    if (_socialController.text.trim().isNotEmpty) return true;
+    if ((_selectedState ?? '') != _initialState) return true;
+
+    if (!listEquals(_socialLinks, _initialSocialLinks)) return true;
+    if (!listEquals(_existingPortfolioUrls, _initialPortfolioUrls)) return true;
+    if (!listEquals(_existingExhibitionPictureUrls, _initialExhibitionPictureUrls)) return true;
+
+    return false;
+  }
+
+  Future<bool?> _showDiscardChangesDialog() {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: const Color(0xFFFAF6EE),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text(
+          'Discard unsaved changes?',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF8B261D),
+            fontSize: 20,
+          ),
+        ),
+        content: const Text(
+          'You have unsaved changes. Do you want to discard them?',
+          style: TextStyle(color: Color(0xFF2A1810), fontSize: 14),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+        actions: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              OutlinedButton(
+                onPressed: () => Navigator.pop(dialogCtx, false),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF8B261D)),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text(
+                  'Stay and Edit',
+                  style: TextStyle(
+                    color: Color(0xFF8B261D),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogCtx, true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF8B261D),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text(
+                  'Discard Changes',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -382,106 +496,130 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
   Widget build(BuildContext context) {
     final isEditMode = widget.existingProfile != null;
 
-    return BuyerBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
+    return PopScope(
+      canPop: !_hasUnsavedChanges || _isChangesSaved,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final navigator = Navigator.of(context);
+        final shouldDiscard = await _showDiscardChangesDialog();
+        if (shouldDiscard == true && mounted) {
+          navigator.pop();
+        }
+      },
+      child: BuyerBackground(
+        child: Scaffold(
           backgroundColor: Colors.transparent,
-          elevation: 0,
-          title: Text(
-            isEditMode ? 'Edit Creator Profile' : 'Creator Onboarding',
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF8B261D),
-            ),
-          ),
-          iconTheme: const IconThemeData(color: Color(0xFF8B261D)),
-          actions: [
-            if (!isEditMode)
-              IconButton(
-                onPressed: () =>
-                    context.read<AuthBloc>().add(AuthLogoutRequested()),
-                icon: const Icon(Icons.logout, color: Color(0xFF8B261D)),
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            title: Text(
+              isEditMode ? 'Edit Creator Profile' : 'Creator Onboarding',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF8B261D),
               ),
-          ],
-        ),
-      body: BlocConsumer<CreatorBloc, CreatorState>(
-        listenWhen: (previous, current) =>
-            previous.actionId != current.actionId &&
-            current.action == CreatorAction.saveProfile &&
-            current.actionStatus != CreatorActionStatus.inProgress,
-        listener: (context, state) {
-          final messenger = ScaffoldMessenger.of(context);
-          if (state.actionStatus == CreatorActionStatus.failure) {
-            messenger.showSnackBar(
-              SnackBar(content: Text(state.actionMessage ?? 'Could not save your profile.')),
-            );
-            return;
-          }
-          messenger.showSnackBar(
-            SnackBar(
-              content: Text(isEditMode ? 'Profile updated.' : 'Welcome to MadeByHands!'),
             ),
-          );
-          if (isEditMode) Navigator.pop(context);
-        },
-        buildWhen: (previous, current) =>
-            previous.isRunning(CreatorAction.saveProfile) !=
-            current.isRunning(CreatorAction.saveProfile),
-        builder: (context, state) {
-          final saving = state.isRunning(CreatorAction.saveProfile);
-          return AbsorbPointer(
-            absorbing: saving,
-            child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                24.0,
-                16.0,
-                24.0,
-                MediaQuery.of(context).viewInsets.bottom + 24.0,
-              ),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _OnboardingHeader(isEditMode: isEditMode),
-                    const SizedBox(height: 30),
-                    _buildProfileImagePicker(),
-                    const SizedBox(height: 30),
-                    _buildFormFields(),
-                    const SizedBox(height: 30),
-                    _buildExhibitionPicturesSection(),
-                    const SizedBox(height: 30),
-                    _buildSocialLinksSection(),
-                    const SizedBox(height: 30),
-                    _buildPortfolioSection(),
-                    const SizedBox(height: 50),
-                    FilledButton(
-                      onPressed: saving ? null : _submit,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF8B261D),
-                        foregroundColor: Colors.white,
-                      ),
-                      child: saving
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(isEditMode ? 'Save profile changes' : 'Launch my studio'),
-                    ),
-                    const SizedBox(height: 30),
-                  ],
+            iconTheme: const IconThemeData(color: Color(0xFF8B261D)),
+            actions: [
+              if (!isEditMode)
+                IconButton(
+                  onPressed: () =>
+                      context.read<AuthBloc>().add(AuthLogoutRequested()),
+                  icon: const Icon(Icons.logout, color: Color(0xFF8B261D)),
                 ),
-              ),
-            ),
-          );
-        },
+            ],
+          ),
+          body: BlocConsumer<CreatorBloc, CreatorState>(
+            listenWhen: (previous, current) =>
+                previous.actionId != current.actionId &&
+                current.action == CreatorAction.saveProfile &&
+                current.actionStatus != CreatorActionStatus.inProgress,
+            listener: (context, state) {
+              final messenger = ScaffoldMessenger.of(context);
+              if (state.actionStatus == CreatorActionStatus.failure) {
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      state.actionMessage ?? 'Could not save your profile.',
+                    ),
+                  ),
+                );
+                return;
+              }
+              _isChangesSaved = true;
+              messenger.showSnackBar(
+                SnackBar(
+                  content: Text(
+                    isEditMode
+                        ? 'Profile updated.'
+                        : 'Welcome to MadeByHands!',
+                  ),
+                ),
+              );
+              if (isEditMode) Navigator.pop(context);
+            },
+            buildWhen: (previous, current) =>
+                previous.isRunning(CreatorAction.saveProfile) !=
+                current.isRunning(CreatorAction.saveProfile),
+            builder: (context, state) {
+              final saving = state.isRunning(CreatorAction.saveProfile);
+              return AbsorbPointer(
+                absorbing: saving,
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    24.0,
+                    16.0,
+                    24.0,
+                    MediaQuery.of(context).viewInsets.bottom + 24.0,
+                  ),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _OnboardingHeader(isEditMode: isEditMode),
+                        const SizedBox(height: 30),
+                        _buildProfileImagePicker(),
+                        const SizedBox(height: 30),
+                        _buildFormFields(),
+                        const SizedBox(height: 30),
+                        _buildExhibitionPicturesSection(),
+                        const SizedBox(height: 30),
+                        _buildSocialLinksSection(),
+                        const SizedBox(height: 30),
+                        _buildPortfolioSection(),
+                        const SizedBox(height: 50),
+                        FilledButton(
+                          onPressed: saving ? null : _submit,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF8B261D),
+                            foregroundColor: Colors.white,
+                          ),
+                          child: saving
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  isEditMode
+                                      ? 'Save profile changes'
+                                      : 'Launch my studio',
+                                ),
+                        ),
+                        const SizedBox(height: 30),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
       ),
-    ),
     );
   }
 
