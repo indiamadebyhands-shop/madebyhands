@@ -86,6 +86,8 @@ class _CreatorProfileViewState extends State<CreatorProfileView> {
           icon: const Icon(Icons.swap_horiz_rounded),
           label: const Text('Switch accounts'),
           style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF8B261D),
+            foregroundColor: Colors.white,
             minimumSize: const Size(double.infinity, 52),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           ),
