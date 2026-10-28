@@ -15,7 +15,7 @@ class UserManagementView extends StatefulWidget {
   State<UserManagementView> createState() => _UserManagementViewState();
 }
 
-enum _VerifiedFilter { all, verified, unverified }
+enum _CreatorFilter { all, verified, unverified, suspended }
 
 class _UserManagementViewState extends State<UserManagementView>
     with SingleTickerProviderStateMixin {
@@ -27,7 +27,7 @@ class _UserManagementViewState extends State<UserManagementView>
   late final TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  _VerifiedFilter _creatorFilter = _VerifiedFilter.all;
+  _CreatorFilter _creatorFilter = _CreatorFilter.all;
 
   @override
   void initState() {
@@ -57,9 +57,10 @@ class _UserManagementViewState extends State<UserManagementView>
 
   bool _matchesCreatorFilter(UserEntity user) {
     return switch (_creatorFilter) {
-      _VerifiedFilter.all => true,
-      _VerifiedFilter.verified => user.isVerified,
-      _VerifiedFilter.unverified => !user.isVerified,
+      _CreatorFilter.all => true,
+      _CreatorFilter.verified => user.isVerified,
+      _CreatorFilter.unverified => !user.isVerified,
+      _CreatorFilter.suspended => user.isSuspended,
     };
   }
 
@@ -117,22 +118,30 @@ class _UserManagementViewState extends State<UserManagementView>
                   children: [
                     ChoiceChip(
                       label: const Text('All'),
-                      selected: _creatorFilter == _VerifiedFilter.all,
+                      selected: _creatorFilter == _CreatorFilter.all,
                       onSelected: (_) =>
-                          setState(() => _creatorFilter = _VerifiedFilter.all),
+                          setState(() => _creatorFilter = _CreatorFilter.all),
                     ),
                     ChoiceChip(
                       label: const Text('Verified'),
-                      selected: _creatorFilter == _VerifiedFilter.verified,
+                      selected: _creatorFilter == _CreatorFilter.verified,
                       onSelected: (_) => setState(
-                        () => _creatorFilter = _VerifiedFilter.verified,
+                        () => _creatorFilter = _CreatorFilter.verified,
                       ),
                     ),
                     ChoiceChip(
                       label: const Text('Not verified'),
-                      selected: _creatorFilter == _VerifiedFilter.unverified,
+                      selected: _creatorFilter == _CreatorFilter.unverified,
                       onSelected: (_) => setState(
-                        () => _creatorFilter = _VerifiedFilter.unverified,
+                        () => _creatorFilter = _CreatorFilter.unverified,
+                      ),
+                    ),
+                    ChoiceChip(
+                      avatar: const Icon(Icons.block, size: 16),
+                      label: const Text('Suspended'),
+                      selected: _creatorFilter == _CreatorFilter.suspended,
+                      onSelected: (_) => setState(
+                        () => _creatorFilter = _CreatorFilter.suspended,
                       ),
                     ),
                   ],
@@ -162,6 +171,9 @@ class _UserManagementViewState extends State<UserManagementView>
                         name: data['name'] as String? ?? '',
                         phone: data['phone'] as String? ?? '',
                         role: data['role'] as String? ?? 'buyer',
+                        roles: (data['roles'] as List<dynamic>?)
+                            ?.whereType<String>()
+                            .toList(),
                         isVerified: data['isVerified'] as bool? ?? false,
                         isSuspended: data['isSuspended'] as bool? ?? false,
                         creatorModerationLevel:
@@ -176,11 +188,11 @@ class _UserManagementViewState extends State<UserManagementView>
                     );
 
                 final buyers = users
-                    .where((u) => !u.isCreator && !u.isAdminOrManager)
+                    .where((u) => u.hasBuyerRole && !u.isAdminOrManager)
                     .where(_matchesSearch)
                     .toList();
                 final creators = users
-                    .where((u) => u.isCreator)
+                    .where((u) => u.hasCreatorRole)
                     .where(_matchesCreatorFilter)
                     .where(_matchesSearch)
                     .toList();
@@ -190,15 +202,17 @@ class _UserManagementViewState extends State<UserManagementView>
                   children: [
                     _UserList(
                       users: buyers,
+                      creatorMode: false,
                       emptyMessage: _searchQuery.isEmpty
                           ? 'No buyers registered yet.'
                           : 'No buyers match "$_searchQuery".',
                     ),
                     _UserList(
                       users: creators,
+                      creatorMode: true,
                       emptyMessage:
                           _searchQuery.isEmpty &&
-                              _creatorFilter == _VerifiedFilter.all
+                              _creatorFilter == _CreatorFilter.all
                           ? 'No creators registered yet.'
                           : 'No creators match the current search/filter.',
                     ),
@@ -216,8 +230,13 @@ class _UserManagementViewState extends State<UserManagementView>
 class _UserList extends StatelessWidget {
   final List<UserEntity> users;
   final String emptyMessage;
+  final bool creatorMode;
 
-  const _UserList({required this.users, required this.emptyMessage});
+  const _UserList({
+    required this.users,
+    required this.emptyMessage,
+    required this.creatorMode,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -232,19 +251,21 @@ class _UserList extends StatelessWidget {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       itemCount: users.length,
-      itemBuilder: (context, index) => _UserTile(user: users[index]),
+      itemBuilder: (context, index) =>
+          _UserTile(user: users[index], asCreator: creatorMode),
     );
   }
 }
 
 class _UserTile extends StatelessWidget {
   final UserEntity user;
+  final bool asCreator;
 
-  const _UserTile({required this.user});
+  const _UserTile({required this.user, required this.asCreator});
 
   @override
   Widget build(BuildContext context) {
-    final isCreator = user.isCreator;
+    final isCreator = asCreator;
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       color: user.isSuspended
@@ -324,7 +345,7 @@ class _UserTile extends StatelessWidget {
                 ),
               )
             else ...[
-              if (user.isCreator)
+              if (asCreator)
                 PopupMenuItem(
                   value: 'staged',
                   child: Text(switch (user.creatorModerationLevel) {
@@ -341,7 +362,7 @@ class _UserTile extends StatelessWidget {
                 ),
               ),
             ],
-            if (user.isCreator &&
+            if (asCreator &&
                 !user.isSuspended &&
                 user.creatorModerationLevel > 0)
               const PopupMenuItem(
@@ -379,7 +400,7 @@ class _UserTile extends StatelessWidget {
     }
     final level = immediate
         ? 3
-        : user.isCreator
+        : asCreator
         ? (user.creatorModerationLevel >= 2
               ? 3
               : user.creatorModerationLevel + 1)
@@ -393,7 +414,7 @@ class _UserTile extends StatelessWidget {
           title: Text(
             immediate
                 ? 'Suspend ${user.name} immediately?'
-                : user.isCreator
+                : asCreator
                 ? switch (level) {
                     1 => 'Send first warning?',
                     2 => 'Send second warning?',
@@ -499,7 +520,7 @@ class _UserTile extends StatelessWidget {
   }
 
   Future<void> _viewProfile(BuildContext context) async {
-    if (user.isCreator) {
+    if (asCreator) {
       final navigator = Navigator.of(context);
       final messenger = ScaffoldMessenger.of(context);
       try {

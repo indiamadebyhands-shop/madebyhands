@@ -11,6 +11,7 @@ class ProfileTab extends StatelessWidget {
   final VoidCallback onAddresses;
   final VoidCallback onSupport;
   final VoidCallback onAccount;
+  final VoidCallback onCreatorMode;
   final VoidCallback onLogout;
 
   const ProfileTab({
@@ -20,6 +21,7 @@ class ProfileTab extends StatelessWidget {
     required this.onAddresses,
     required this.onSupport,
     required this.onAccount,
+    required this.onCreatorMode,
     required this.onLogout,
   });
 
@@ -142,6 +144,12 @@ class ProfileTab extends StatelessWidget {
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const AboutMadeByHandsPage()),
             ),
+          ),
+          const SizedBox(height: 8),
+          FilledButton.icon(
+            onPressed: onCreatorMode,
+            icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+            label: const Text('Switch accounts'),
           ),
           const SizedBox(height: 8),
           OutlinedButton.icon(

@@ -112,26 +112,52 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String phone,
     required String role,
   }) async {
-    final reference = firestore.collection('users').doc(uid);
-    final existing = await reference.get();
-    if (existing.exists && existing.data() != null) {
-      await reference.update({'name': name, 'email': email, 'phone': phone});
-      return UserModel.fromJson({
-        ..._userFromDocument(existing).toJson(),
-        'name': name,
-        'email': email,
-        'phone': phone,
-      });
+    final normalizedRole = role.toLowerCase().trim() == 'seller'
+        ? 'creator'
+        : role.toLowerCase().trim();
+    if (normalizedRole != 'buyer' &&
+        normalizedRole != 'creator' &&
+        normalizedRole != 'admin') {
+      throw ArgumentError('Unsupported account role.');
     }
-    final userModel = UserModel(
-      uid: uid,
-      email: email,
-      name: name,
-      phone: phone,
-      role: role,
-    );
-    await reference.set(userModel.toJson());
-    return userModel;
+    final reference = firestore.collection('users').doc(uid);
+    return firestore.runTransaction((transaction) async {
+      final existing = await transaction.get(reference);
+      if (existing.exists && existing.data() != null) {
+        final current = _userFromDocument(existing);
+        if (current.isAdminOrManager) {
+          throw StateError(
+            'Administrator accounts cannot switch marketplace roles.',
+          );
+        }
+        final updatedRoles = <String>{...current.roles, normalizedRole}.toList();
+        transaction.update(reference, {
+          'name': name,
+          'email': email,
+          'phone': phone,
+          'role': normalizedRole,
+          'roles': updatedRoles,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        return current.copyWith(
+          name: name,
+          email: email,
+          phone: phone,
+          role: normalizedRole,
+          roles: updatedRoles,
+        );
+      }
+      final userModel = UserModel(
+        uid: uid,
+        email: email,
+        name: name,
+        phone: phone,
+        role: normalizedRole,
+        roles: normalizedRole == 'admin' ? const [] : [normalizedRole],
+      );
+      transaction.set(reference, userModel.toJson());
+      return userModel;
+    });
   }
 
   @override
@@ -194,7 +220,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     }
 
     final userDoc = await firestore.collection('users').doc(uid).get();
-    final role = (userDoc.data()?['role'] as String? ?? '').toLowerCase();
+    final userData = userDoc.data() ?? const <String, dynamic>{};
+    final role = (userData['role'] as String? ?? '').toLowerCase();
+    final roles = (userData['roles'] as List<dynamic>? ?? const [])
+        .whereType<String>()
+        .map((value) => value.toLowerCase().trim())
+        .toSet();
 
     // Record why they left before wiping their data. This is a one-way,
     // write-only log for the platform's own records; the account itself is
@@ -204,6 +235,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         'uid': uid,
         'email': userDoc.data()?['email'] ?? currentUser.email ?? '',
         'role': role,
+        'roles': roles.toList(),
         'reason': reason.trim(),
         'deletedAt': FieldValue.serverTimestamp(),
       });
@@ -211,7 +243,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       debugPrint('Could not record account-deletion reason: $error');
     }
 
-    if (role == 'creator' || role == 'seller') {
+    if (role == 'creator' || role == 'seller' || roles.contains('creator')) {
       await _deleteQuietly(firestore.collection('creator_profiles').doc(uid));
       await _deleteQuietly(firestore.collection('creator_verifications').doc(uid));
       await _deleteQuietly(firestore.collection('creator_bank_accounts').doc(uid));

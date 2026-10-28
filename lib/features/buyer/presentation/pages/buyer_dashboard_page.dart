@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:madebyhands/features/auth/domain/entities/user_entity.dart';
+import 'package:madebyhands/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:madebyhands/features/buyer/domain/entities/buyer_product_notification.dart';
 import 'package:madebyhands/features/buyer/domain/entities/product.dart';
 import 'package:madebyhands/features/buyer/domain/entities/public_creator.dart';
@@ -628,6 +629,15 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
                   BuyerTabFrame(
                     child: ProfileTab(
                       user: _currentUser,
+                      onCreatorMode: () => context.read<AuthBloc>().add(
+                        AuthSignUpWithRoleRequested(
+                          uid: _currentUser.uid,
+                          email: _currentUser.email,
+                          name: _currentUser.name,
+                          phone: _currentUser.phone,
+                          role: 'creator',
+                        ),
+                      ),
                       onAccount: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => BuyerAccountPage(

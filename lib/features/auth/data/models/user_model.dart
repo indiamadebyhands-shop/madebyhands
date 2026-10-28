@@ -7,6 +7,7 @@ class UserModel extends UserEntity {
     required super.name,
     super.phone = '',
     required super.role,
+    super.roles,
     super.isVerified = false,
     super.isSuspended = false,
     super.creatorModerationLevel = 0,
@@ -20,6 +21,12 @@ class UserModel extends UserEntity {
       name: json['name'] as String? ?? '',
       phone: json['phone'] as String? ?? '',
       role: json['role'] as String? ?? 'buyer',
+      roles: (json['roles'] as List<dynamic>?)
+          ?.whereType<String>()
+          .map((value) => value.toLowerCase().trim())
+          .where((value) => value == 'buyer' || value == 'creator')
+          .toSet()
+          .toList(),
       isVerified: json['isVerified'] as bool? ?? false,
       isSuspended: json['isSuspended'] as bool? ?? false,
       creatorModerationLevel:
@@ -35,6 +42,7 @@ class UserModel extends UserEntity {
       'name': name,
       'phone': phone,
       'role': role,
+      'roles': roles,
       'isVerified': isVerified,
       'isSuspended': isSuspended,
       'creatorModerationLevel': creatorModerationLevel,
@@ -48,6 +56,7 @@ class UserModel extends UserEntity {
     String? name,
     String? phone,
     String? role,
+    List<String>? roles,
     bool? isVerified,
     bool? isSuspended,
     int? creatorModerationLevel,
@@ -59,6 +68,7 @@ class UserModel extends UserEntity {
       name: name ?? this.name,
       phone: phone ?? this.phone,
       role: role ?? this.role,
+      roles: roles ?? this.roles,
       isVerified: isVerified ?? this.isVerified,
       isSuspended: isSuspended ?? this.isSuspended,
       creatorModerationLevel:
