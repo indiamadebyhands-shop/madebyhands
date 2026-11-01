@@ -397,6 +397,23 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
           ),
           iconTheme: const IconThemeData(color: Color(0xFF8B261D)),
           actions: [
+            if (!isEditMode && widget.user.hasBuyerRole)
+              IconButton(
+                tooltip: 'Switch back to buyer',
+                onPressed: () => context.read<AuthBloc>().add(
+                  AuthSignUpWithRoleRequested(
+                    uid: widget.user.uid,
+                    email: widget.user.email,
+                    name: widget.user.name,
+                    phone: widget.user.phone,
+                    role: 'buyer',
+                  ),
+                ),
+                icon: const Icon(
+                  Icons.swap_horiz_rounded,
+                  color: Color(0xFF8B261D),
+                ),
+              ),
             if (!isEditMode)
               IconButton(
                 onPressed: () =>
