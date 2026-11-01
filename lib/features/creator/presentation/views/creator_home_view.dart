@@ -8,6 +8,7 @@ import 'package:madebyhands/core/constants/image_upload.dart';
 import 'package:madebyhands/core/theme/app_theme.dart';
 import 'package:madebyhands/features/auth/domain/entities/user_entity.dart';
 import 'package:madebyhands/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:madebyhands/features/buyer/presentation/pages/story_detail_page.dart';
 import 'package:madebyhands/features/creator/domain/entities/creator_order.dart';
 import 'package:madebyhands/features/creator/domain/entities/creator_profile.dart';
 import 'package:madebyhands/features/creator/domain/repositories/creator_repository.dart';
@@ -946,36 +947,87 @@ class _HistoricalArtSectionState extends State<_HistoricalArtSection> {
               left: 14,
               right: 14,
               bottom: 14,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    story['title']!,
-                    style: GoogleFonts.montserrat(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                      height: 1.2,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (story['description'] != null) ...[
-                    const SizedBox(height: 3),
-                    Text(
-                      story['description']!,
-                      style: GoogleFonts.montserrat(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.white.withValues(alpha: 0.90),
-                        height: 1.3,
-                      ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final desc = story['description'] ?? '';
+                  final descStyle = GoogleFonts.montserrat(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.white.withValues(alpha: 0.90),
+                    height: 1.3,
+                  );
+
+                  bool isOverflowing = false;
+                  if (desc.isNotEmpty) {
+                    final textPainter = TextPainter(
+                      text: TextSpan(text: desc, style: descStyle),
                       maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ],
+                      textDirection: TextDirection.ltr,
+                    )..layout(maxWidth: constraints.maxWidth);
+                    isOverflowing = textPainter.didExceedMaxLines;
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        story['title']!,
+                        style: GoogleFonts.montserrat(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          height: 1.2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (desc.isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          desc,
+                          style: descStyle,
+                          maxLines: 2,
+                          overflow: TextOverflow.clip,
+                        ),
+                        if (isOverflowing) ...[
+                          const SizedBox(height: 4),
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => StoryDetailPage(story: story),
+                                ),
+                              );
+                            },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Read More',
+                                  style: GoogleFonts.montserrat(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFFE2D0B5),
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: const Color(0xFFE2D0B5),
+                                  ),
+                                ),
+                                const SizedBox(width: 2),
+                                const Icon(
+                                  Icons.chevron_right_rounded,
+                                  size: 14,
+                                  color: Color(0xFFE2D0B5),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ],
+                  );
+                },
               ),
             ),
           ],

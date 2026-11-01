@@ -5,6 +5,7 @@ import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:madebyhands/features/buyer/domain/entities/product.dart';
 import 'package:madebyhands/features/buyer/domain/entities/saved_address.dart';
 import 'package:madebyhands/features/buyer/presentation/bloc/buyer_bloc.dart';
+import 'package:madebyhands/features/buyer/presentation/pages/story_detail_page.dart';
 import 'package:madebyhands/features/buyer/presentation/widgets/arch_backdrop.dart';
 import 'package:madebyhands/features/buyer/presentation/widgets/product_card.dart';
 
@@ -59,6 +60,7 @@ class _HomeTabState extends State<HomeTab> {
   late final PageController _storyPageController;
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _homeSearchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
 
   final GlobalKey _overlayKey = GlobalKey();
   double _overlayBottom = 0;
@@ -94,6 +96,13 @@ class _HomeTabState extends State<HomeTab> {
       initialPage: _initialStoryPage * _stories.length,
     );
     _scrollController.addListener(_onScroll);
+    _searchFocusNode.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _onScroll() {
@@ -117,6 +126,8 @@ class _HomeTabState extends State<HomeTab> {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _homeSearchController.dispose();
+    _searchFocusNode.removeListener(_onFocusChange);
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -437,13 +448,18 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Widget _buildSearchBar() {
+    final isFocused = _searchFocusNode.hasFocus;
     return Container(
       height: 40,
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: const Color(0xFFFFFAF0),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFC49A6C), width: 1.2),
-        boxShadow: [
+        shape: StadiumBorder(
+          side: BorderSide(
+            color: isFocused ? const Color(0xFF8B261D) : const Color(0xFFC49A6C),
+            width: isFocused ? 2.0 : 1.5,
+          ),
+        ),
+        shadows: [
           BoxShadow(
             color: const Color(0xFF6B1D1D).withValues(alpha: 0.10),
             blurRadius: 10,
@@ -451,30 +467,39 @@ class _HomeTabState extends State<HomeTab> {
           ),
         ],
       ),
-      child: TextField(
-        controller: _homeSearchController,
-        textInputAction: TextInputAction.search,
-        onSubmitted: (_) => _submitSearch(),
-        style: GoogleFonts.montserrat(
-          color: const Color(0xFF331818),
-          fontSize: 12.5,
-          fontWeight: FontWeight.w500,
-        ),
-        decoration: InputDecoration(
-          hintText: 'Search products or categories...',
-          hintStyle: GoogleFonts.montserrat(
-            color: const Color(0xFF8A7F73),
-            fontSize: 12,
+      child: ClipPath(
+        clipper: const ShapeBorderClipper(shape: StadiumBorder()),
+        child: TextField(
+          controller: _homeSearchController,
+          focusNode: _searchFocusNode,
+          textInputAction: TextInputAction.search,
+          onSubmitted: (_) => _submitSearch(),
+          cursorColor: const Color(0xFF8B261D),
+          style: GoogleFonts.montserrat(
+            color: const Color(0xFF331818),
+            fontSize: 12.5,
             fontWeight: FontWeight.w500,
           ),
-          prefixIcon: IconButton(
-            tooltip: 'Search products and categories',
-            onPressed: _submitSearch,
-            icon: const Icon(Icons.search, color: Color(0xFF8B261D), size: 18),
+          decoration: InputDecoration(
+            hintText: 'Search products or categories...',
+            hintStyle: GoogleFonts.montserrat(
+              color: const Color(0xFF8A7F73),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+            prefixIcon: IconButton(
+              tooltip: 'Search products and categories',
+              onPressed: _submitSearch,
+              icon: const Icon(Icons.search, color: Color(0xFF8B261D), size: 18),
+            ),
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            errorBorder: InputBorder.none,
+            focusedErrorBorder: InputBorder.none,
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(vertical: 11),
           ),
-          border: InputBorder.none,
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(vertical: 11),
         ),
       ),
     );
@@ -595,42 +620,92 @@ class _HomeTabState extends State<HomeTab> {
                 ),
               ),
             ),
-            // 3. Heading (Montserrat w700) & Description (Montserrat w400, 1-2 lines) at Bottom Left
+            // 3. Heading (Montserrat w700) & Description at Bottom Left
             Positioned(
               left: 16,
               right: 16,
               bottom: 16,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    story['title']!,
-                    style: GoogleFonts.montserrat(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                      height: 1.2,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (story['description'] != null &&
-                      story['description']!.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    Text(
-                      story['description']!,
-                      style: GoogleFonts.montserrat(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.white.withValues(alpha: 0.90),
-                        height: 1.3,
-                      ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final desc = story['description'] ?? '';
+                  final descStyle = GoogleFonts.montserrat(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.white.withValues(alpha: 0.90),
+                    height: 1.3,
+                  );
+
+                  bool isOverflowing = false;
+                  if (desc.isNotEmpty) {
+                    final textPainter = TextPainter(
+                      text: TextSpan(text: desc, style: descStyle),
                       maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ],
+                      textDirection: TextDirection.ltr,
+                    )..layout(maxWidth: constraints.maxWidth);
+                    isOverflowing = textPainter.didExceedMaxLines;
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        story['title']!,
+                        style: GoogleFonts.montserrat(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          height: 1.2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (desc.isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          desc,
+                          style: descStyle,
+                          maxLines: 2,
+                          overflow: TextOverflow.clip,
+                        ),
+                        if (isOverflowing) ...[
+                          const SizedBox(height: 4),
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => StoryDetailPage(story: story),
+                                ),
+                              );
+                            },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Read More',
+                                  style: GoogleFonts.montserrat(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFFE2D0B5),
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: const Color(0xFFE2D0B5),
+                                  ),
+                                ),
+                                const SizedBox(width: 2),
+                                const Icon(
+                                  Icons.chevron_right_rounded,
+                                  size: 14,
+                                  color: Color(0xFFE2D0B5),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ],
+                  );
+                },
               ),
             ),
           ],
