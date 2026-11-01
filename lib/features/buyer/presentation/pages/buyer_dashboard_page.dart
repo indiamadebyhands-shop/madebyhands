@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:madebyhands/features/auth/domain/entities/user_entity.dart';
 import 'package:madebyhands/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:madebyhands/features/auth/presentation/widgets/account_switch_confirmation.dart';
 import 'package:madebyhands/features/buyer/domain/entities/buyer_product_notification.dart';
 import 'package:madebyhands/features/buyer/domain/entities/product.dart';
 import 'package:madebyhands/features/buyer/domain/entities/public_creator.dart';
@@ -507,6 +508,23 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
     );
   }
 
+  Future<void> _switchToCreator() async {
+    final confirmed = await confirmAccountSwitch(
+      context,
+      targetSide: 'creator',
+    );
+    if (!confirmed || !mounted) return;
+    context.read<AuthBloc>().add(
+      AuthSignUpWithRoleRequested(
+        uid: _currentUser.uid,
+        email: _currentUser.email,
+        name: _currentUser.name,
+        phone: _currentUser.phone,
+        role: 'creator',
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Home keeps the app theme it was designed against; every other buyer
@@ -629,15 +647,7 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
                   BuyerTabFrame(
                     child: ProfileTab(
                       user: _currentUser,
-                      onCreatorMode: () => context.read<AuthBloc>().add(
-                        AuthSignUpWithRoleRequested(
-                          uid: _currentUser.uid,
-                          email: _currentUser.email,
-                          name: _currentUser.name,
-                          phone: _currentUser.phone,
-                          role: 'creator',
-                        ),
-                      ),
+                      onCreatorMode: _switchToCreator,
                       onAccount: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => BuyerAccountPage(

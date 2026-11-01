@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:madebyhands/core/constants/image_upload.dart';
 import 'package:madebyhands/features/auth/domain/entities/user_entity.dart';
 import 'package:madebyhands/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:madebyhands/features/auth/presentation/widgets/account_switch_confirmation.dart';
 import 'package:madebyhands/features/buyer/presentation/widgets/buyer_background.dart';
 import 'package:madebyhands/features/creator/domain/entities/creator_profile.dart';
 import 'package:madebyhands/features/creator/presentation/bloc/creator_bloc.dart';
@@ -215,6 +216,24 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _switchBackToBuyer() async {
+    final confirmed = await confirmAccountSwitch(
+      context,
+      targetSide: 'buyer',
+      confirmColor: const Color(0xFF8B261D),
+    );
+    if (!confirmed || !mounted) return;
+    context.read<AuthBloc>().add(
+      AuthSignUpWithRoleRequested(
+        uid: widget.user.uid,
+        email: widget.user.email,
+        name: widget.user.name,
+        phone: widget.user.phone,
+        role: 'buyer',
       ),
     );
   }
@@ -524,15 +543,7 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
               if (!isEditMode && widget.user.hasBuyerRole)
                 IconButton(
                   tooltip: 'Switch back to buyer',
-                  onPressed: () => context.read<AuthBloc>().add(
-                    AuthSignUpWithRoleRequested(
-                      uid: widget.user.uid,
-                      email: widget.user.email,
-                      name: widget.user.name,
-                      phone: widget.user.phone,
-                      role: 'buyer',
-                    ),
-                  ),
+                  onPressed: _switchBackToBuyer,
                   icon: const Icon(
                     Icons.swap_horiz_rounded,
                     color: Color(0xFF8B261D),
