@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:madebyhands/features/auth/domain/entities/user_entity.dart';
 import 'package:madebyhands/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:madebyhands/features/auth/presentation/widgets/account_switch_confirmation.dart';
 import 'package:madebyhands/features/creator/domain/entities/creator_profile.dart';
 import 'package:madebyhands/features/creator/presentation/pages/creator_onboarding_page.dart';
 import 'package:madebyhands/features/creator/presentation/pages/creator_verification_page.dart';
@@ -22,6 +23,24 @@ class CreatorProfileView extends StatefulWidget {
 class _CreatorProfileViewState extends State<CreatorProfileView> {
   void _push(Widget page) =>
       Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+
+  Future<void> _switchToBuyer() async {
+    final confirmed = await confirmAccountSwitch(
+      context,
+      targetSide: 'buyer',
+      confirmColor: const Color(0xFF8B261D),
+    );
+    if (!confirmed || !mounted) return;
+    context.read<AuthBloc>().add(
+      AuthSignUpWithRoleRequested(
+        uid: widget.user.uid,
+        email: widget.user.email,
+        name: widget.user.name,
+        phone: widget.user.phone,
+        role: 'buyer',
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,15 +93,7 @@ class _CreatorProfileViewState extends State<CreatorProfileView> {
         ),
         const SizedBox(height: 30),
         ElevatedButton.icon(
-          onPressed: () => context.read<AuthBloc>().add(
-            AuthSignUpWithRoleRequested(
-              uid: widget.user.uid,
-              email: widget.user.email,
-              name: widget.user.name,
-              phone: widget.user.phone,
-              role: 'buyer',
-            ),
-          ),
+          onPressed: _switchToBuyer,
           icon: const Icon(Icons.swap_horiz_rounded),
           label: const Text('Switch accounts'),
           style: ElevatedButton.styleFrom(
