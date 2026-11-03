@@ -290,11 +290,14 @@ class FirestoreBuyerRepository implements BuyerRepository {
             final message = data['message'] as String? ?? '';
             final createdAt =
                 (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+            final ticketId =
+                data['targetId'] as String? ?? data['ticketId'] as String?;
             return BuyerProductNotification.support(
               id: doc.id,
               title: title,
               message: message,
               publishedAt: createdAt,
+              ticketId: ticketId,
             );
           }).toList();
           list.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
