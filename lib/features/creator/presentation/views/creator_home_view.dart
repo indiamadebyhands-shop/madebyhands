@@ -812,21 +812,21 @@ class _HistoricalArtSectionState extends State<_HistoricalArtSection> {
     {
       'title': 'The Story of Madhubani Art',
       'description':
-          'Ancient folk painting tradition from Mithila celebrating nature, mythology and vibrant heritage.',
+          'Madhubani art is a traditional Indian art form that originated in the Mithila region of Bihar. It is believed to have begun during the time of King Janaka, who asked artists to decorate the kingdom for the wedding of his daughter, Sita, to Lord Rama. Traditionally, women painted these beautiful designs on the walls and floors of their homes during festivals and special occasions. The paintings feature vibrant colours, geometric patterns, flowers, animals, and scenes from mythology. Today, Madhubani art is recognised worldwide and represents India\'s rich cultural heritage and creativity.',
       'image':
           'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=800&auto=format&fit=crop',
     },
     {
       'title': 'The Heritage of Phulkari',
       'description':
-          'Handcrafted floral embroidery woven with silk threads, passing down generations of stories.',
+          'Phulkari is a traditional embroidery art that originated in the Punjab region of India and Pakistan. The word Phulkari means “flower work,” reflecting its beautiful floral designs. Traditionally, women embroidered colourful patterns on cotton fabric using bright silk threads. This art was an important part of Punjabi culture and was used to decorate dupattas, shawls, and wedding garments. Phulkari embroidery was passed down through generations, with mothers teaching their daughters the skill. Each design represented love, happiness, and cultural identity. Today, Phulkari is celebrated worldwide and continues to preserve the rich heritage and artistic traditions of Punjab.',
       'image':
           'https://images.unsplash.com/photo-1606744888344-493238951221?q=80&w=800&auto=format&fit=crop',
     },
     {
       'title': 'Royal Terracotta & Pottery',
       'description':
-          'Earthy clay sculptures and traditional pottery shaped by hand across royal artisan guilds.',
+          'Terracotta and pottery are among the oldest forms of traditional Indian art, reflecting the country\'s rich cultural heritage. Terracotta, meaning “baked earth,” is created by shaping natural clay and firing it at high temperatures. Indian artisans have used this technique for centuries to make decorative objects, sculptures, utensils, and architectural ornaments. Royal terracotta pottery is admired for its intricate designs, elegant shapes, and earthy colours. Traditionally, pottery was used in royal palaces, religious ceremonies, and everyday life. Today, skilled craftsmen continue to preserve this heritage by creating beautiful handmade pieces that celebrate India\'s artistic traditions and craftsmanship.',
       'image':
           'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?q=80&w=800&auto=format&fit=crop',
     },
