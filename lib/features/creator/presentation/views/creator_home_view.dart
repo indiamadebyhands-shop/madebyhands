@@ -900,6 +900,15 @@ class _HistoricalArtSectionState extends State<_HistoricalArtSection> {
   }
 
   Widget _buildStoryCard(Map<String, String> story) {
+    void openStoryDetail() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => StoryDetailPage(story: story),
+        ),
+      );
+    }
+
     return Container(
       margin: const EdgeInsets.only(right: 12, bottom: 8),
       decoration: BoxDecoration(
@@ -915,122 +924,118 @@ class _HistoricalArtSectionState extends State<_HistoricalArtSection> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Image.network(
-                story['image']!,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stack) => Container(
-                  color: AppColors.outline,
-                  child: const Icon(Icons.brush, size: 40, color: AppColors.mutedText),
-                ),
-              ),
-            ),
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withValues(alpha: 0.3),
-                      Colors.black.withValues(alpha: 0.85),
-                    ],
-                    stops: const [0.3, 0.65, 1.0],
+        child: GestureDetector(
+          onTap: openStoryDetail,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Image.network(
+                  story['image']!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stack) => Container(
+                    color: AppColors.outline,
+                    child: const Icon(Icons.brush, size: 40, color: AppColors.mutedText),
                   ),
                 ),
               ),
-            ),
-            Positioned(
-              left: 14,
-              right: 14,
-              bottom: 14,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final desc = story['description'] ?? '';
-                  final descStyle = GoogleFonts.montserrat(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w400,
-                    color: Colors.white.withValues(alpha: 0.90),
-                    height: 1.3,
-                  );
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.3),
+                        Colors.black.withValues(alpha: 0.85),
+                      ],
+                      stops: const [0.3, 0.65, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 14,
+                right: 14,
+                bottom: 14,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final desc = story['description'] ?? '';
+                    final descStyle = GoogleFonts.montserrat(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.white.withValues(alpha: 0.90),
+                      height: 1.3,
+                    );
 
-                  bool isOverflowing = false;
-                  if (desc.isNotEmpty) {
-                    final textPainter = TextPainter(
-                      text: TextSpan(text: desc, style: descStyle),
-                      maxLines: 2,
-                      textDirection: TextDirection.ltr,
-                    )..layout(maxWidth: constraints.maxWidth);
-                    isOverflowing = textPainter.didExceedMaxLines;
-                  }
+                    bool isOverflowing = false;
+                    if (desc.isNotEmpty) {
+                      final textPainter = TextPainter(
+                        text: TextSpan(text: desc, style: descStyle),
+                        maxLines: 2,
+                        textDirection: TextDirection.ltr,
+                      )..layout(maxWidth: constraints.maxWidth);
+                      isOverflowing = textPainter.didExceedMaxLines;
+                    }
 
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        story['title']!,
-                        style: GoogleFonts.montserrat(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          height: 1.2,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (desc.isNotEmpty) ...[
-                        const SizedBox(height: 3),
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
                         Text(
-                          desc,
-                          style: descStyle,
-                          maxLines: 2,
-                          overflow: TextOverflow.clip,
-                        ),
-                        if (isOverflowing) ...[
-                          const SizedBox(height: 4),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => StoryDetailPage(story: story),
-                                ),
-                              );
-                            },
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Read More',
-                                  style: GoogleFonts.montserrat(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFFE2D0B5),
-                                    decoration: TextDecoration.underline,
-                                    decorationColor: const Color(0xFFE2D0B5),
-                                  ),
-                                ),
-                                const SizedBox(width: 2),
-                                const Icon(
-                                  Icons.chevron_right_rounded,
-                                  size: 14,
-                                  color: Color(0xFFE2D0B5),
-                                ),
-                              ],
-                            ),
+                          story['title']!,
+                          style: GoogleFonts.montserrat(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            height: 1.2,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (desc.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            desc,
+                            style: descStyle,
+                            maxLines: 2,
+                            overflow: TextOverflow.clip,
+                          ),
+                          if (isOverflowing) ...[
+                            const SizedBox(height: 4),
+                            GestureDetector(
+                              onTap: openStoryDetail,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Read More',
+                                    style: GoogleFonts.montserrat(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFFE2D0B5),
+                                      decoration: TextDecoration.underline,
+                                      decorationColor: const Color(0xFFE2D0B5),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 2),
+                                  const Icon(
+                                    Icons.chevron_right_rounded,
+                                    size: 14,
+                                    color: Color(0xFFE2D0B5),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       ],
-                    ],
-                  );
-                },
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
