@@ -17,6 +17,7 @@ class BuyerProductNotification {
   final String? orderRejectionReason;
   final String? customTitle;
   final String? customMessage;
+  final String? ticketId;
 
   const BuyerProductNotification({
     required this.id,
@@ -30,6 +31,7 @@ class BuyerProductNotification {
     this.orderRejectionReason,
     this.customTitle,
     this.customMessage,
+    this.ticketId,
   });
 
   const BuyerProductNotification.order({
@@ -43,13 +45,15 @@ class BuyerProductNotification {
         reason = null,
         type = BuyerNotificationType.order,
         customTitle = null,
-        customMessage = null;
+        customMessage = null,
+        ticketId = null;
 
   const BuyerProductNotification.support({
     required this.id,
     required String title,
     required String message,
     required this.publishedAt,
+    this.ticketId,
   })  : product = null,
         category = '',
         reason = null,

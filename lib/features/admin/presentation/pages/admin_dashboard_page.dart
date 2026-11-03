@@ -16,6 +16,7 @@ import 'package:madebyhands/features/admin/presentation/views/user_management_vi
 import 'package:madebyhands/features/admin/presentation/views/verification_view.dart';
 import 'package:madebyhands/features/auth/domain/entities/user_entity.dart';
 import 'package:madebyhands/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:madebyhands/features/support/presentation/widgets/support_notification_dialog.dart';
 
 class _AdminSection {
   final String title;
@@ -472,10 +473,45 @@ class _AdminNotificationBellState extends State<_AdminNotificationBell> {
                                       .update({'isRead': true})
                                       .catchError((_) {});
                                 }
-                                Navigator.pop(modalContext);
-                                final section = _sectionFor(category);
-                                if (section != null) {
-                                  context.read<AdminCubit>().changePage(section);
+                                final isSupport =
+                                    category == 'support_ticket' ||
+                                    category == 'support' ||
+                                    category == 'support_reply' ||
+                                    category == 'support_resolved' ||
+                                    item['type'] == 'support';
+
+                                if (isSupport) {
+                                  final authState =
+                                      context.read<AuthBloc>().state;
+                                  final adminUid = authState is AuthSuccess
+                                      ? authState.user.uid
+                                      : 'admin';
+                                  final createdAt =
+                                      (item['createdAt'] as Timestamp?)
+                                          ?.toDate() ??
+                                      DateTime.now();
+                                  showDialog<void>(
+                                    context: context,
+                                    builder: (_) => SupportNotificationDialog(
+                                      title: item['title'] as String? ??
+                                          'Support Notification',
+                                      message:
+                                          item['message'] as String? ?? '',
+                                      createdAt: createdAt,
+                                      ticketId: item['targetId'] as String? ??
+                                          item['ticketId'] as String?,
+                                      userId: adminUid,
+                                      userRole: 'admin',
+                                    ),
+                                  );
+                                } else {
+                                  Navigator.pop(modalContext);
+                                  final section = _sectionFor(category);
+                                  if (section != null) {
+                                    context
+                                        .read<AdminCubit>()
+                                        .changePage(section);
+                                  }
                                 }
                               },
                             ),
