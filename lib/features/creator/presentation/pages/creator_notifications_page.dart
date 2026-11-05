@@ -4,6 +4,7 @@ import 'package:madebyhands/core/error/failures.dart';
 import 'package:madebyhands/core/theme/app_theme.dart';
 import 'package:madebyhands/features/creator/domain/entities/creator_notification.dart';
 import 'package:madebyhands/features/creator/domain/repositories/creator_repository.dart';
+import 'package:madebyhands/features/support/presentation/widgets/support_notification_dialog.dart';
 import 'package:madebyhands/init_dependencies.dart';
 
 class CreatorNotificationsPage extends StatefulWidget {
@@ -366,6 +367,12 @@ class _NotificationDetailDialog extends StatelessWidget {
 
   const _NotificationDetailDialog({required this.notification});
 
+  bool get _isSupport =>
+      notification.type == 'support' ||
+      notification.type == 'support_ticket' ||
+      notification.type == 'support_reply' ||
+      notification.type == 'support_resolved';
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -431,14 +438,55 @@ class _NotificationDetailDialog extends StatelessWidget {
           ),
         ],
       ),
+      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       actions: [
-        ElevatedButton(
-          onPressed: () => Navigator.pop(context),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-          ),
-          child: const Text('Close'),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            if (_isSupport) ...[
+              FilledButton.icon(
+                onPressed: () {
+                  final nav = Navigator.of(context);
+                  nav.pop();
+                  openSupportConversation(
+                    context: context,
+                    navigator: nav,
+                    ticketId: notification.targetId ?? '',
+                    userId: notification.creatorUid,
+                    userRole: 'creator',
+                  );
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  minimumSize: const Size(0, 36),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                label: const Text('Open Chat'),
+              ),
+              const SizedBox(width: 8),
+            ],
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    _isSupport ? AppColors.surface : AppColors.primary,
+                foregroundColor: _isSupport ? AppColors.text : Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                minimumSize: const Size(0, 36),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text('Close'),
+            ),
+          ],
         ),
       ],
     );

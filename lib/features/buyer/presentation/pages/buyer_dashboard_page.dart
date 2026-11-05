@@ -31,6 +31,7 @@ import 'package:madebyhands/features/buyer/presentation/widgets/buyer_empty_stat
 import 'package:madebyhands/features/creator/domain/repositories/creator_repository.dart';
 import 'package:madebyhands/features/creator/presentation/models/creator_onboarding_draft.dart';
 import 'package:madebyhands/features/support/presentation/pages/support_center_page.dart';
+import 'package:madebyhands/features/support/presentation/widgets/support_notification_dialog.dart';
 import 'package:madebyhands/init_dependencies.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -455,7 +456,19 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
           onNotificationTap: (notification) {
             setState(() => _readNotificationIds.add(notification.id));
             _persistReadNotifications();
-            if (notification.product != null) {
+            if (notification.type == BuyerNotificationType.support) {
+              showDialog<void>(
+                context: context,
+                builder: (_) => SupportNotificationDialog(
+                  title: notification.title,
+                  message: notification.message,
+                  createdAt: notification.publishedAt,
+                  ticketId: notification.ticketId,
+                  userId: _currentUser.uid,
+                  userRole: 'buyer',
+                ),
+              );
+            } else if (notification.product != null) {
               _openProduct(notification.product!);
             } else {
               Navigator.of(context).push(

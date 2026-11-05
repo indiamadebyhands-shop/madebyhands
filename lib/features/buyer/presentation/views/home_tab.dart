@@ -69,21 +69,21 @@ class _HomeTabState extends State<HomeTab> {
     {
       'title': 'The Story of Madhubani Art',
       'description':
-          'Ancient folk painting tradition from Mithila celebrating nature, mythology and vibrant heritage.',
+          'Madhubani art is a traditional Indian art form that originated in the Mithila region of Bihar. It is believed to have begun during the time of King Janaka, who asked artists to decorate the kingdom for the wedding of his daughter, Sita, to Lord Rama. Traditionally, women painted these beautiful designs on the walls and floors of their homes during festivals and special occasions. The paintings feature vibrant colours, geometric patterns, flowers, animals, and scenes from mythology. Today, Madhubani art is recognised worldwide and represents India\'s rich cultural heritage and creativity.',
       'image':
           'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=800&auto=format&fit=crop',
     },
     {
       'title': 'The Heritage of Phulkari',
       'description':
-          'Handcrafted floral embroidery woven with silk threads, passing down generations of stories.',
+          'Phulkari is a traditional embroidery art that originated in the Punjab region of India and Pakistan. The word Phulkari means “flower work,” reflecting its beautiful floral designs. Traditionally, women embroidered colourful patterns on cotton fabric using bright silk threads. This art was an important part of Punjabi culture and was used to decorate dupattas, shawls, and wedding garments. Phulkari embroidery was passed down through generations, with mothers teaching their daughters the skill. Each design represented love, happiness, and cultural identity. Today, Phulkari is celebrated worldwide and continues to preserve the rich heritage and artistic traditions of Punjab.',
       'image':
           'https://images.unsplash.com/photo-1606744888344-493238951221?q=80&w=800&auto=format&fit=crop',
     },
     {
       'title': 'Royal Terracotta & Pottery',
       'description':
-          'Earthy clay sculptures and traditional pottery shaped by hand across royal artisan guilds.',
+          'Terracotta and pottery are among the oldest forms of traditional Indian art, reflecting the country\'s rich cultural heritage. Terracotta, meaning “baked earth,” is created by shaping natural clay and firing it at high temperatures. Indian artisans have used this technique for centuries to make decorative objects, sculptures, utensils, and architectural ornaments. Royal terracotta pottery is admired for its intricate designs, elegant shapes, and earthy colours. Traditionally, pottery was used in royal palaces, religious ceremonies, and everyday life. Today, skilled craftsmen continue to preserve this heritage by creating beautiful handmade pieces that celebrate India\'s artistic traditions and craftsmanship.',
       'image':
           'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?q=80&w=800&auto=format&fit=crop',
     },
@@ -559,6 +559,15 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Widget _buildStoryCard(Map<String, String> story) {
+    void openStoryDetail() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => StoryDetailPage(story: story),
+        ),
+      );
+    }
+
     return Container(
       margin: const EdgeInsets.only(left: 2, top: 2, right: 14, bottom: 20),
       decoration: BoxDecoration(
@@ -581,134 +590,130 @@ class _HomeTabState extends State<HomeTab> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
-        child: Stack(
-          children: [
-            // 1. Artwork Image
-            Positioned.fill(
-              child: story['image']!.startsWith('http')
-                  ? Image.network(
-                      story['image']!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Image.asset(
-                        'assets/main_page_elements/painting_main.png',
+        child: GestureDetector(
+          onTap: openStoryDetail,
+          child: Stack(
+            children: [
+              // 1. Artwork Image
+              Positioned.fill(
+                child: story['image']!.startsWith('http')
+                    ? Image.network(
+                        story['image']!,
                         fit: BoxFit.cover,
-                      ),
-                    )
-                  : Image.asset(
-                      story['image']!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Image.asset(
-                        'assets/main_page_elements/painting_main.png',
+                        errorBuilder: (_, _, _) => Image.asset(
+                          'assets/main_page_elements/painting_main.png',
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : Image.asset(
+                        story['image']!,
                         fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Image.asset(
+                          'assets/main_page_elements/painting_main.png',
+                          fit: BoxFit.cover,
+                        ),
                       ),
+              ),
+              // 2. Dark Gradient Overlay at Bottom
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.20),
+                        Colors.black.withValues(alpha: 0.80),
+                      ],
+                      stops: const [0.4, 0.65, 1.0],
                     ),
-            ),
-            // 2. Dark Gradient Overlay at Bottom
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withValues(alpha: 0.20),
-                      Colors.black.withValues(alpha: 0.80),
-                    ],
-                    stops: const [0.4, 0.65, 1.0],
                   ),
                 ),
               ),
-            ),
-            // 3. Heading (Montserrat w700) & Description at Bottom Left
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: 16,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final desc = story['description'] ?? '';
-                  final descStyle = GoogleFonts.montserrat(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w400,
-                    color: Colors.white.withValues(alpha: 0.90),
-                    height: 1.3,
-                  );
+              // 3. Heading & Description at Bottom Left
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: 16,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final desc = story['description'] ?? '';
+                    final descStyle = GoogleFonts.montserrat(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.white.withValues(alpha: 0.90),
+                      height: 1.3,
+                    );
 
-                  bool isOverflowing = false;
-                  if (desc.isNotEmpty) {
-                    final textPainter = TextPainter(
-                      text: TextSpan(text: desc, style: descStyle),
-                      maxLines: 2,
-                      textDirection: TextDirection.ltr,
-                    )..layout(maxWidth: constraints.maxWidth);
-                    isOverflowing = textPainter.didExceedMaxLines;
-                  }
+                    bool isOverflowing = false;
+                    if (desc.isNotEmpty) {
+                      final textPainter = TextPainter(
+                        text: TextSpan(text: desc, style: descStyle),
+                        maxLines: 2,
+                        textDirection: TextDirection.ltr,
+                      )..layout(maxWidth: constraints.maxWidth);
+                      isOverflowing = textPainter.didExceedMaxLines;
+                    }
 
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        story['title']!,
-                        style: GoogleFonts.montserrat(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          height: 1.2,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (desc.isNotEmpty) ...[
-                        const SizedBox(height: 3),
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
                         Text(
-                          desc,
-                          style: descStyle,
-                          maxLines: 2,
-                          overflow: TextOverflow.clip,
-                        ),
-                        if (isOverflowing) ...[
-                          const SizedBox(height: 4),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => StoryDetailPage(story: story),
-                                ),
-                              );
-                            },
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Read More',
-                                  style: GoogleFonts.montserrat(
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFFE2D0B5),
-                                    decoration: TextDecoration.underline,
-                                    decorationColor: const Color(0xFFE2D0B5),
-                                  ),
-                                ),
-                                const SizedBox(width: 2),
-                                const Icon(
-                                  Icons.chevron_right_rounded,
-                                  size: 14,
-                                  color: Color(0xFFE2D0B5),
-                                ),
-                              ],
-                            ),
+                          story['title']!,
+                          style: GoogleFonts.montserrat(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            height: 1.2,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (desc.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            desc,
+                            style: descStyle,
+                            maxLines: 2,
+                            overflow: TextOverflow.clip,
+                          ),
+                          if (isOverflowing) ...[
+                            const SizedBox(height: 4),
+                            GestureDetector(
+                              onTap: openStoryDetail,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Read More',
+                                    style: GoogleFonts.montserrat(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFFE2D0B5),
+                                      decoration: TextDecoration.underline,
+                                      decorationColor: const Color(0xFFE2D0B5),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 2),
+                                  const Icon(
+                                    Icons.chevron_right_rounded,
+                                    size: 14,
+                                    color: Color(0xFFE2D0B5),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       ],
-                    ],
-                  );
-                },
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

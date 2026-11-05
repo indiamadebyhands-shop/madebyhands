@@ -100,6 +100,10 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
 
   bool _isChangesSaved = false;
 
+  void _onFieldChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
@@ -117,6 +121,12 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
     _bioController.text = _initialBio;
     _locationController.text = _initialLocation;
     _storyController.text = _initialStory;
+
+    _nameController.addListener(_onFieldChanged);
+    _bioController.addListener(_onFieldChanged);
+    _locationController.addListener(_onFieldChanged);
+    _storyController.addListener(_onFieldChanged);
+    _socialController.addListener(_onFieldChanged);
 
     if (p != null) {
       if (p.state.isNotEmpty && _indianStatesAndUTs.contains(p.state)) {
@@ -206,7 +216,7 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
         backgroundColor: const Color(0xFFFAF6EE),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
-          'Discard unsaved changes?',
+          'Discard changes?',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Color(0xFF8B261D),
@@ -214,51 +224,53 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
           ),
         ),
         content: const Text(
-          'You have unsaved changes. Do you want to discard them?',
+          'You haven\'t saved your changes',
           style: TextStyle(color: Color(0xFF2A1810), fontSize: 14),
         ),
         actionsPadding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
         actions: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
+          Row(
             children: [
-              OutlinedButton(
-                onPressed: () => Navigator.pop(dialogCtx, false),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFF8B261D)),
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(dialogCtx, false),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFF8B261D)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
                   ),
-                ),
-                child: const Text(
-                  'Stay and Edit',
-                  style: TextStyle(
-                    color: Color(0xFF8B261D),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(
+                      color: Color(0xFF8B261D),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: () => Navigator.pop(dialogCtx, true),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF8B261D),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(dialogCtx, true),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF8B261D),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
                   ),
-                ),
-                child: const Text(
-                  'Discard Changes',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  child: const Text(
+                    'Discard',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
                 ),
               ),
             ],
@@ -311,6 +323,12 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
 
   @override
   void dispose() {
+    _nameController.removeListener(_onFieldChanged);
+    _bioController.removeListener(_onFieldChanged);
+    _locationController.removeListener(_onFieldChanged);
+    _storyController.removeListener(_onFieldChanged);
+    _socialController.removeListener(_onFieldChanged);
+
     _nameController.dispose();
     _bioController.dispose();
     _locationController.dispose();
@@ -613,6 +631,51 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
             ),
             iconTheme: const IconThemeData(color: Color(0xFF8B261D)),
             actions: [
+              BlocBuilder<CreatorBloc, CreatorState>(
+                buildWhen: (previous, current) =>
+                    previous.isRunning(CreatorAction.saveProfile) !=
+                    current.isRunning(CreatorAction.saveProfile),
+                builder: (context, state) {
+                  final saving = state.isRunning(CreatorAction.saveProfile);
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 12.0),
+                    child: Center(
+                      child: FilledButton(
+                        onPressed: saving ? null : _submit,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF8B261D),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                        child: saving
+                            ? const SizedBox(
+                                height: 16,
+                                width: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(
+                                isEditMode ? 'Save' : 'Launch',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                      ),
+                    ),
+                  );
+                },
+              ),
               if (!isEditMode && widget.user.hasBuyerRole)
                 IconButton(
                   tooltip: 'Switch back to buyer',
@@ -694,28 +757,6 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
                         _buildSocialLinksSection(),
                         const SizedBox(height: 30),
                         _buildPortfolioSection(),
-                        const SizedBox(height: 50),
-                        FilledButton(
-                          onPressed: saving ? null : _submit,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF8B261D),
-                            foregroundColor: Colors.white,
-                          ),
-                          child: saving
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Text(
-                                  isEditMode
-                                      ? 'Save profile changes'
-                                      : 'Launch my studio',
-                                ),
-                        ),
                         const SizedBox(height: 30),
                       ],
                     ),
