@@ -28,8 +28,10 @@ import 'package:madebyhands/features/buyer/presentation/views/search_tab.dart';
 import 'package:madebyhands/features/buyer/presentation/theme/buyer_theme.dart';
 import 'package:madebyhands/features/buyer/presentation/widgets/buyer_background.dart';
 import 'package:madebyhands/features/buyer/presentation/widgets/buyer_empty_state.dart';
-import 'package:madebyhands/init_dependencies.dart';
+import 'package:madebyhands/features/creator/domain/repositories/creator_repository.dart';
+import 'package:madebyhands/features/creator/presentation/models/creator_onboarding_draft.dart';
 import 'package:madebyhands/features/support/presentation/pages/support_center_page.dart';
+import 'package:madebyhands/init_dependencies.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class BuyerDashboardPage extends StatefulWidget {
@@ -57,6 +59,7 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
   String? _pendingSharedProductId;
   String? _pendingSharedCreatorId;
   bool _navigationTransitionInProgress = false;
+  bool _hasCompletedCreatorProfile = false;
 
   /// Category the Shop tab should filter by when opened from Home.
   final ValueNotifier<String?> _shopCategory = ValueNotifier(null);
@@ -86,6 +89,7 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
       ..add(BuyerWatchFavorites(_currentUser.uid))
       ..add(BuyerLoadCart(_currentUser.uid));
     _restoreReadNotifications();
+    _checkCreatorProfileCompletion();
     final repository = context.read<BuyerBloc>().repository;
     _addressSubscription = repository.watchAddresses(_currentUser.uid).listen((
       addresses,
@@ -114,6 +118,26 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
             );
           });
         }, onError: (_) {});
+  }
+
+  Future<void> _checkCreatorProfileCompletion() async {
+    if (!_currentUser.hasCreatorRole) return;
+    final cached = await CreatorProfileCompletionStore.load(_currentUser.uid);
+    if (cached != null && mounted) {
+      setState(() => _hasCompletedCreatorProfile = cached);
+    }
+    final result = await serviceLocator<CreatorRepository>().getCreatorProfile(
+      _currentUser.uid,
+    );
+    if (!mounted) return;
+    result.fold((_) {}, (profile) {
+      final isCompleted = profile != null;
+      setState(() => _hasCompletedCreatorProfile = isCompleted);
+      CreatorProfileCompletionStore.save(
+        _currentUser.uid,
+        isCompleted: isCompleted,
+      );
+    });
   }
 
   Future<void> _restoreReadNotifications() async {
@@ -512,6 +536,8 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
     final confirmed = await confirmAccountSwitch(
       context,
       targetSide: 'creator',
+      confirmColor: BuyerColors.maroon,
+      isCreatingAccount: _hasCompletedCreatorProfile != true,
     );
     if (!confirmed || !mounted) return;
     context.read<AuthBloc>().add(
@@ -648,6 +674,7 @@ class _BuyerDashboardPageState extends State<BuyerDashboardPage> {
                     child: ProfileTab(
                       user: _currentUser,
                       onCreatorMode: _switchToCreator,
+                      hasCompletedCreatorProfile: _hasCompletedCreatorProfile,
                       onAccount: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => BuyerAccountPage(

@@ -14,7 +14,11 @@ class CreatorProfileView extends StatefulWidget {
   final CreatorProfile profile;
   final UserEntity user;
 
-  const CreatorProfileView({super.key, required this.profile, required this.user});
+  const CreatorProfileView({
+    super.key,
+    required this.profile,
+    required this.user,
+  });
 
   @override
   State<CreatorProfileView> createState() => _CreatorProfileViewState();
@@ -29,6 +33,7 @@ class _CreatorProfileViewState extends State<CreatorProfileView> {
       context,
       targetSide: 'buyer',
       confirmColor: const Color(0xFF8B261D),
+      isCreatingAccount: !widget.user.hasBuyerRole,
     );
     if (!confirmed || !mounted) return;
     context.read<AuthBloc>().add(
@@ -87,31 +92,47 @@ class _CreatorProfileViewState extends State<CreatorProfileView> {
         _buildActionItem(
           icon: Icons.delete_forever_outlined,
           title: 'Delete account',
-          subtitle: 'Permanently delete your creator account, products and studio data',
+          subtitle:
+              'Permanently delete your creator account, products and studio data',
           badgeColor: Colors.red,
           onTap: () => _confirmAccountDeletion(profile),
         ),
         const SizedBox(height: 30),
         ElevatedButton.icon(
           onPressed: _switchToBuyer,
-          icon: const Icon(Icons.swap_horiz_rounded),
-          label: const Text('Switch accounts'),
+          icon: Icon(
+            widget.user.hasBuyerRole
+                ? Icons.swap_horiz_rounded
+                : Icons.shopping_bag_outlined,
+          ),
+          label: Text(
+            widget.user.hasBuyerRole
+                ? 'Switch accounts'
+                : 'Make a buyer account',
+          ),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF8B261D),
             foregroundColor: Colors.white,
             minimumSize: const Size(double.infinity, 52),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
           ),
         ),
         const SizedBox(height: 10),
         OutlinedButton.icon(
           onPressed: () => context.read<AuthBloc>().add(AuthLogoutRequested()),
           icon: const Icon(Icons.logout, color: Color(0xFF8B261D)),
-          label: const Text('Log out', style: TextStyle(color: Color(0xFF8B261D))),
+          label: const Text(
+            'Log out',
+            style: TextStyle(color: Color(0xFF8B261D)),
+          ),
           style: OutlinedButton.styleFrom(
             side: const BorderSide(color: Color(0xFF8B261D)),
             minimumSize: const Size(double.infinity, 52),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
           ),
         ),
         const SizedBox(height: 20),
@@ -300,7 +321,11 @@ class _VerificationBadge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: color,
+        ),
       ),
     );
   }

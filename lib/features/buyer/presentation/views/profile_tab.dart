@@ -12,6 +12,7 @@ class ProfileTab extends StatelessWidget {
   final VoidCallback onSupport;
   final VoidCallback onAccount;
   final VoidCallback onCreatorMode;
+  final bool hasCompletedCreatorProfile;
   final VoidCallback onLogout;
 
   const ProfileTab({
@@ -22,6 +23,7 @@ class ProfileTab extends StatelessWidget {
     required this.onSupport,
     required this.onAccount,
     required this.onCreatorMode,
+    required this.hasCompletedCreatorProfile,
     required this.onLogout,
   });
 
@@ -148,8 +150,17 @@ class ProfileTab extends StatelessWidget {
           const SizedBox(height: 8),
           FilledButton.icon(
             onPressed: onCreatorMode,
-            icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-            label: const Text('Switch accounts'),
+            icon: Icon(
+              hasCompletedCreatorProfile
+                  ? Icons.swap_horiz_rounded
+                  : Icons.storefront_outlined,
+              size: 18,
+            ),
+            label: Text(
+              hasCompletedCreatorProfile
+                  ? 'Switch accounts'
+                  : 'Make a creator account',
+            ),
           ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
