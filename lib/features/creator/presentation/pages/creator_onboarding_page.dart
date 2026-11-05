@@ -10,6 +10,7 @@ import 'package:madebyhands/features/auth/presentation/widgets/account_switch_co
 import 'package:madebyhands/features/buyer/presentation/widgets/buyer_background.dart';
 import 'package:madebyhands/features/creator/domain/entities/creator_profile.dart';
 import 'package:madebyhands/features/creator/presentation/bloc/creator_bloc.dart';
+import 'package:madebyhands/features/creator/presentation/models/creator_onboarding_draft.dart';
 import 'package:madebyhands/features/creator/presentation/widgets/creator_image_crop_dialog.dart';
 
 class CreatorOnboardingPage extends StatefulWidget {
@@ -134,8 +135,55 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
       _socialLinks.addAll(_initialSocialLinks);
       _existingPortfolioUrls.addAll(_initialPortfolioUrls);
       _existingExhibitionPictureUrls.addAll(_initialExhibitionPictureUrls);
+    } else {
+      _restoreDraft();
     }
   }
+
+  Future<void> _restoreDraft() async {
+    final draft = await CreatorOnboardingDraftStore.load(widget.user.uid);
+    if (draft == null || !mounted) return;
+    setState(() {
+      _nameController.text = draft.name;
+      _bioController.text = draft.bio;
+      _locationController.text = draft.location;
+      _storyController.text = draft.story;
+      _socialController.text = draft.pendingSocialLink;
+      _selectedState = _indianStatesAndUTs.contains(draft.state)
+          ? draft.state
+          : null;
+      _socialLinks
+        ..clear()
+        ..addAll(draft.socialLinks);
+      _profileImage = draft.profileImagePath == null
+          ? null
+          : File(draft.profileImagePath!);
+      _portfolioImages
+        ..clear()
+        ..addAll(draft.portfolioImagePaths.map(File.new));
+      _exhibitionImages
+        ..clear()
+        ..addAll(draft.exhibitionImagePaths.map(File.new));
+    });
+  }
+
+  Future<void> _saveDraft() => CreatorOnboardingDraftStore.save(
+    widget.user.uid,
+    CreatorOnboardingDraft(
+      name: _nameController.text,
+      bio: _bioController.text,
+      location: _locationController.text,
+      story: _storyController.text,
+      state: _selectedState ?? '',
+      pendingSocialLink: _socialController.text,
+      socialLinks: List.of(_socialLinks),
+      profileImagePath: _profileImage?.path,
+      portfolioImagePaths: _portfolioImages.map((image) => image.path).toList(),
+      exhibitionImagePaths: _exhibitionImages
+          .map((image) => image.path)
+          .toList(),
+    ),
+  );
 
   bool get _hasUnsavedChanges {
     if (_profileImage != null) return true;
@@ -151,7 +199,12 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
 
     if (!listEquals(_socialLinks, _initialSocialLinks)) return true;
     if (!listEquals(_existingPortfolioUrls, _initialPortfolioUrls)) return true;
-    if (!listEquals(_existingExhibitionPictureUrls, _initialExhibitionPictureUrls)) return true;
+    if (!listEquals(
+      _existingExhibitionPictureUrls,
+      _initialExhibitionPictureUrls,
+    )) {
+      return true;
+    }
 
     return false;
   }
@@ -161,9 +214,7 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
       context: context,
       builder: (dialogCtx) => AlertDialog(
         backgroundColor: const Color(0xFFFAF6EE),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
           'Discard changes?',
           style: TextStyle(
@@ -218,10 +269,7 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
                   ),
                   child: const Text(
                     'Discard',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                 ),
               ),
@@ -239,6 +287,29 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
       confirmColor: const Color(0xFF8B261D),
     );
     if (!confirmed || !mounted) return;
+    try {
+      await _saveDraft();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not save your creator profile draft.'),
+        ),
+      );
+      return;
+    }
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Changes saved'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
     context.read<AuthBloc>().add(
       AuthSignUpWithRoleRequested(
         uid: widget.user.uid,
@@ -398,23 +469,24 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
     FocusScope.of(context).unfocus();
     if (_formKey.currentState!.validate()) {
       context.read<CreatorBloc>().add(
-            CreatorSubmitOnboarding(
-              uid: widget.user.uid,
-              name: _nameController.text.trim(),
-              profileImageFile: _profileImage,
-              bio: _bioController.text.trim(),
-              location: _locationController.text.trim(),
-              state: _selectedState ?? '',
-              socialLinks: List.of(_socialLinks),
-              portfolioImageFiles: List.of(_portfolioImages),
-              exhibitionImageFiles: List.of(_exhibitionImages),
-              story: _storyController.text.trim(),
-              existingProfileImageUrl: widget.existingProfile?.profileImage,
-              existingPortfolioUrls: List.of(_existingPortfolioUrls),
-              existingExhibitionPictureUrls:
-                  List.of(_existingExhibitionPictureUrls),
-            ),
-          );
+        CreatorSubmitOnboarding(
+          uid: widget.user.uid,
+          name: _nameController.text.trim(),
+          profileImageFile: _profileImage,
+          bio: _bioController.text.trim(),
+          location: _locationController.text.trim(),
+          state: _selectedState ?? '',
+          socialLinks: List.of(_socialLinks),
+          portfolioImageFiles: List.of(_portfolioImages),
+          exhibitionImageFiles: List.of(_exhibitionImages),
+          story: _storyController.text.trim(),
+          existingProfileImageUrl: widget.existingProfile?.profileImage,
+          existingPortfolioUrls: List.of(_existingPortfolioUrls),
+          existingExhibitionPictureUrls: List.of(
+            _existingExhibitionPictureUrls,
+          ),
+        ),
+      );
     }
   }
 
@@ -426,7 +498,8 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
         return FileImage(_profileImage!);
       }
     }
-    if (widget.existingProfile != null && widget.existingProfile!.profileImage.isNotEmpty) {
+    if (widget.existingProfile != null &&
+        widget.existingProfile!.profileImage.isNotEmpty) {
       return NetworkImage(widget.existingProfile!.profileImage);
     }
     return null;
@@ -512,13 +585,13 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
                             ),
                           )
                         : imageFile != null
-                            ? _buildFileImageWidget(
-                                imageFile,
-                                width: double.infinity,
-                                height: double.infinity,
-                                fit: BoxFit.contain,
-                              )
-                            : const SizedBox.shrink(),
+                        ? _buildFileImageWidget(
+                            imageFile,
+                            width: double.infinity,
+                            height: double.infinity,
+                            fit: BoxFit.contain,
+                          )
+                        : const SizedBox.shrink(),
                   ),
                 ),
               ],
@@ -638,12 +711,17 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
                 return;
               }
               _isChangesSaved = true;
+              if (!isEditMode) {
+                CreatorOnboardingDraftStore.clear(widget.user.uid);
+                CreatorProfileCompletionStore.save(
+                  widget.user.uid,
+                  isCompleted: true,
+                );
+              }
               messenger.showSnackBar(
                 SnackBar(
                   content: Text(
-                    isEditMode
-                        ? 'Profile updated.'
-                        : 'Welcome to MadeByHands!',
+                    isEditMode ? 'Profile updated.' : 'Welcome to MadeByHands!',
                   ),
                 ),
               );
@@ -693,8 +771,10 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
   }
 
   Widget _buildProfileImagePicker() {
-    final hasImage = _profileImage != null ||
-        (widget.existingProfile != null && widget.existingProfile!.profileImage.isNotEmpty);
+    final hasImage =
+        _profileImage != null ||
+        (widget.existingProfile != null &&
+            widget.existingProfile!.profileImage.isNotEmpty);
 
     return Column(
       children: [
@@ -727,12 +807,16 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
                     : _pickProfileImage,
                 child: CircleAvatar(
                   radius: 60,
-                  backgroundColor:
-                      const Color(0xFF8B261D).withValues(alpha: 0.1),
+                  backgroundColor: const Color(
+                    0xFF8B261D,
+                  ).withValues(alpha: 0.1),
                   backgroundImage: _getProfileImageProvider(),
                   child: !hasImage
-                      ? const Icon(Icons.person,
-                          size: 60, color: Color(0xFF8B261D))
+                      ? const Icon(
+                          Icons.person,
+                          size: 60,
+                          color: Color(0xFF8B261D),
+                        )
                       : null,
                 ),
               ),
@@ -744,7 +828,11 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
                   radius: 20,
                   child: IconButton(
                     onPressed: _pickProfileImage,
-                    icon: const Icon(Icons.camera_alt, size: 20, color: Colors.white),
+                    icon: const Icon(
+                      Icons.camera_alt,
+                      size: 20,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -760,7 +848,10 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
       children: [
         TextFormField(
           controller: _nameController,
-          decoration: const InputDecoration(labelText: 'Artisan/Studio Name *', prefixIcon: Icon(Icons.storefront)),
+          decoration: const InputDecoration(
+            labelText: 'Artisan/Studio Name *',
+            prefixIcon: Icon(Icons.storefront),
+          ),
           validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
         ),
         const SizedBox(height: 20),
@@ -785,10 +876,7 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
           ),
           hint: const Text('Select State or Union Territory'),
           items: _indianStatesAndUTs.map((state) {
-            return DropdownMenuItem<String>(
-              value: state,
-              child: Text(state),
-            );
+            return DropdownMenuItem<String>(value: state, child: Text(state));
           }).toList(),
           onChanged: (value) {
             setState(() {
@@ -800,14 +888,21 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
         const SizedBox(height: 20),
         TextFormField(
           controller: _bioController,
-          decoration: const InputDecoration(labelText: 'Short Bio *', alignLabelWithHint: true),
+          decoration: const InputDecoration(
+            labelText: 'Short Bio *',
+            alignLabelWithHint: true,
+          ),
           maxLines: 3,
           validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
         ),
         const SizedBox(height: 20),
         TextFormField(
           controller: _storyController,
-          decoration: const InputDecoration(labelText: 'Your Creator Story *', hintText: 'Tell us your inspiration...', alignLabelWithHint: true),
+          decoration: const InputDecoration(
+            labelText: 'Your Creator Story *',
+            hintText: 'Tell us your inspiration...',
+            alignLabelWithHint: true,
+          ),
           maxLines: 5,
           validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
         ),
@@ -854,11 +949,11 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
               if (_totalExhibitionPictures < _maxExhibitionPictures)
                 _buildAddExhibitionButton(),
               ..._existingExhibitionPictureUrls.asMap().entries.map(
-                    (e) => _buildExistingExhibitionItem(e.key, e.value),
-                  ),
+                (e) => _buildExistingExhibitionItem(e.key, e.value),
+              ),
               ..._exhibitionImages.asMap().entries.map(
-                    (e) => _buildExhibitionItem(e.key, e.value),
-                  ),
+                (e) => _buildExhibitionItem(e.key, e.value),
+              ),
             ],
           ),
         ),
@@ -976,7 +1071,14 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Social Links', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF8B261D))),
+        const Text(
+          'Social Links',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF8B261D),
+          ),
+        ),
         const SizedBox(height: 10),
         Row(
           children: [
@@ -1006,14 +1108,22 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
         Wrap(
           spacing: 8,
           runSpacing: 4,
-          children: _socialLinks.map((link) => Chip(
-            label: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 220),
-              child: Text(link, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
-            ),
-            onDeleted: () => setState(() => _socialLinks.remove(link)),
-            deleteIconColor: Colors.red,
-          )).toList(),
+          children: _socialLinks
+              .map(
+                (link) => Chip(
+                  label: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 220),
+                    child: Text(
+                      link,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                  onDeleted: () => setState(() => _socialLinks.remove(link)),
+                  deleteIconColor: Colors.red,
+                ),
+              )
+              .toList(),
         ),
       ],
     );
@@ -1023,7 +1133,14 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Banner', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF8B261D))),
+        const Text(
+          'Banner',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF8B261D),
+          ),
+        ),
         const SizedBox(height: 10),
         SizedBox(
           height: 120,
@@ -1032,11 +1149,11 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
             children: [
               if (_totalPortfolioImages < 1) _buildAddPortfolioButton(),
               ..._existingPortfolioUrls.asMap().entries.map(
-                    (e) => _buildExistingPortfolioItem(e.key, e.value),
-                  ),
+                (e) => _buildExistingPortfolioItem(e.key, e.value),
+              ),
               ..._portfolioImages.asMap().entries.map(
-                    (e) => _buildPortfolioItem(e.key, e.value),
-                  ),
+                (e) => _buildPortfolioItem(e.key, e.value),
+              ),
             ],
           ),
         ),
@@ -1053,7 +1170,9 @@ class _CreatorOnboardingPageState extends State<CreatorOnboardingPage> {
         decoration: BoxDecoration(
           color: const Color(0xFFFAF6EE),
           borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: const Color(0xFF8B261D).withValues(alpha: 0.3)),
+          border: Border.all(
+            color: const Color(0xFF8B261D).withValues(alpha: 0.3),
+          ),
         ),
         child: const Icon(Icons.add_a_photo_outlined, color: Color(0xFF8A8F82)),
       ),
@@ -1148,8 +1267,14 @@ class _OnboardingHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          isEditMode ? 'Update Your Studio Profile' : 'Complete your Artisan Profile',
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF8B261D)),
+          isEditMode
+              ? 'Update Your Studio Profile'
+              : 'Complete your Artisan Profile',
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF8B261D),
+          ),
         ),
         const SizedBox(height: 8),
         Text(

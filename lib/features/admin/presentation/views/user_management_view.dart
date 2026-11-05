@@ -137,7 +137,6 @@ class _UserManagementViewState extends State<UserManagementView>
                       ),
                     ),
                     ChoiceChip(
-                      avatar: const Icon(Icons.block, size: 16),
                       label: const Text('Suspended'),
                       selected: _creatorFilter == _CreatorFilter.suspended,
                       onSelected: (_) => setState(
