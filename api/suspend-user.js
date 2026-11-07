@@ -67,19 +67,25 @@ module.exports = async (req, res) => {
     if (!targetSnapshot.exists) return res.status(404).json({ error: 'User not found' });
     if (targetUid === caller.uid) return res.status(400).json({ error: 'You cannot suspend your own account' });
 
-    const targetRole = String(targetSnapshot.data().role || '').toLowerCase();
-    const targetEmail = String(targetSnapshot.data().email || '').toLowerCase();
+    const targetData = targetSnapshot.data();
+    const targetRole = String(targetData.role || '').toLowerCase();
+    const targetRoles = Array.isArray(targetData.roles)
+      ? targetData.roles.map((role) => String(role).toLowerCase())
+      : [];
+    const targetEmail = String(targetData.email || '').toLowerCase();
     const targetIsAdmin = ADMIN_ROLES.includes(targetRole) || SUPER_ADMIN_EMAILS.includes(targetEmail);
     if (level > 0 && targetIsAdmin) {
       return res.status(400).json({ error: 'Admins and managers cannot be suspended here' });
     }
 
-    const isCreator = ['creator', 'seller'].includes(targetRole);
+    const creatorRoles = ['creator', 'seller'];
+    const isCreator = creatorRoles.includes(targetRole) ||
+      targetRoles.some((role) => creatorRoles.includes(role));
     if ((level === 1 || level === 2) && !isCreator) {
       return res.status(400).json({ error: 'Warning stages are only available for creators' });
     }
 
-    const currentLevel = Number(targetSnapshot.data().creatorModerationLevel || 0);
+    const currentLevel = Number(targetData.creatorModerationLevel || 0);
     if (isCreator && level > 0 && !immediate && level !== Math.min(currentLevel + 1, 3)) {
       return res.status(409).json({ error: 'Creator warnings must be sent in order' });
     }
