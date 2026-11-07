@@ -29,7 +29,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           'Discover unique handmade pieces that carry the spirit of the artist who made them.',
       imageUrl:
           'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?q=80&w=1000&auto=format&fit=crop',
-      color: AppColors.primary,
+      color: AppColors.pinkArchTop,
     ),
     OnboardingData(
       title: 'Stories in Every Thread',
@@ -45,7 +45,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           'A marketplace built for creators, by people who value the beauty of the handmade.',
       imageUrl:
           'https://images.unsplash.com/photo-1513364776144-60967b0f800f?q=80&w=1000&auto=format&fit=crop',
-      color: AppColors.primaryDark,
+      color: AppColors.pinkArchTop,
     ),
   ];
 
@@ -255,7 +255,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 controller: _pageController,
                 count: _onboardingPages.length,
                 effect: const ExpandingDotsEffect(
-                  activeDotColor: AppColors.primary,
+                  activeDotColor: AppColors.pinkArchTop,
                   dotColor: AppColors.outline,
                   dotHeight: 8,
                   dotWidth: 8,
@@ -269,7 +269,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     duration: 600.ms,
                     curve: Curves.easeInOut,
                   ),
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: AppColors.pinkArchTop,
                   elevation: 0,
                   child: const Icon(
                     Icons.arrow_forward_ios,
@@ -283,6 +283,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             const SizedBox(height: 20),
             if (kGoogleSignInEnabled)
               FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.pinkArchTop,
+                  foregroundColor: Colors.white,
+                ),
                 onPressed: isLoading ? null : _handleLogin,
                 icon: isLoading
                     ? const SizedBox(
@@ -305,7 +309,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.08),
+                  color: AppColors.pinkArchTop.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Text(
@@ -322,7 +326,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   width: 24,
                   child: Checkbox(
                     value: _termsAccepted,
-                    activeColor: AppColors.primary,
+                    activeColor: AppColors.pinkArchTop,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(4),
                     ),
@@ -353,7 +357,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         child: const Text(
                           'Terms and Conditions',
                           style: TextStyle(
-                            color: AppColors.primary,
+                            color: AppColors.pinkArchTop,
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             decoration: TextDecoration.underline,
@@ -378,7 +382,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         child: const Text(
                           'Privacy Policy',
                           style: TextStyle(
-                            color: AppColors.primary,
+                            color: AppColors.pinkArchTop,
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             decoration: TextDecoration.underline,
