@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:madebyhands/core/theme/app_theme.dart';
 
 /// The Home tab's backdrop: a cream arched window (a "jharokha") on a rose
 /// pink field. It is drawn in code rather than stretched from a bitmap, so it
@@ -52,13 +54,16 @@ class ArchBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RepaintBoundary(
-      child: CustomPaint(
-        painter: ArchBackdropPainter(
-          maxArchWidth: maxArchWidth,
-          top: topOffset(context),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: pinkArchSystemUiOverlayStyle,
+      child: RepaintBoundary(
+        child: CustomPaint(
+          painter: ArchBackdropPainter(
+            maxArchWidth: maxArchWidth,
+            top: topOffset(context),
+          ),
+          child: const SizedBox.expand(),
         ),
-        child: const SizedBox.expand(),
       ),
     );
   }
@@ -446,15 +451,18 @@ class ScallopedHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: heightOf(context),
-      child: RepaintBoundary(
-        child: CustomPaint(
-          painter: _ScallopedHeaderPainter(
-            safeTop: MediaQuery.paddingOf(context).top,
-            screenHeight: MediaQuery.sizeOf(context).height,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: pinkArchSystemUiOverlayStyle,
+      child: SizedBox(
+        height: heightOf(context),
+        child: RepaintBoundary(
+          child: CustomPaint(
+            painter: _ScallopedHeaderPainter(
+              safeTop: MediaQuery.paddingOf(context).top,
+              screenHeight: MediaQuery.sizeOf(context).height,
+            ),
+            child: const SizedBox.expand(),
           ),
-          child: const SizedBox.expand(),
         ),
       ),
     );

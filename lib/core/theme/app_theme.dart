@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 abstract final class AppColors {
   // Artistic Earthy Palette
-  static const background = Color(0xFFFFF4F1); // Warm Cream Rose
+  static const background = Color(0xFFFCF0DE); // App's Beige/Cream Background
   static const surface = Color(0xFFFFFFFF);
   static const primary = Color(0xFF6B7E43); // Sage Green
   static const primaryDark = Color(0xFF3E4B25);
@@ -16,7 +17,26 @@ abstract final class AppColors {
   // New "Baked" colors from references
   static const sienna = Color(0xFF8B4513);
   static const gold = Color(0xFFE7C889);
+  static const pinkArchTop = Color(0xFFEF7790); // Solid Pink for Decorative Arch
 }
+
+const defaultSystemUiOverlayStyle = SystemUiOverlayStyle(
+  statusBarColor: Color(0xFFFCF0DE),
+  statusBarIconBrightness: Brightness.dark,
+  statusBarBrightness: Brightness.light,
+  systemNavigationBarColor: Color(0xFFFCF0DE),
+  systemNavigationBarDividerColor: Colors.transparent,
+  systemNavigationBarIconBrightness: Brightness.dark,
+);
+
+const pinkArchSystemUiOverlayStyle = SystemUiOverlayStyle(
+  statusBarColor: Color(0xFFEF7790),
+  statusBarIconBrightness: Brightness.dark,
+  statusBarBrightness: Brightness.light,
+  systemNavigationBarColor: Color(0xFFFCF0DE),
+  systemNavigationBarDividerColor: Colors.transparent,
+  systemNavigationBarIconBrightness: Brightness.dark,
+);
 
 class AppTheme {
   static OutlineInputBorder _border([Color color = Colors.grey]) =>
@@ -40,6 +60,7 @@ class AppTheme {
       foregroundColor: AppColors.text,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
+      systemOverlayStyle: defaultSystemUiOverlayStyle,
       titleTextStyle: GoogleFonts.montserrat(
         color: AppColors.text,
         fontSize: 20,
@@ -47,7 +68,7 @@ class AppTheme {
       ),
     ),
     navigationBarTheme: const NavigationBarThemeData(
-      backgroundColor: AppColors.surface,
+      backgroundColor: Color(0xFFFCF0DE),
       indicatorColor: Color(0xFFDDE5CA),
     ),
     cardTheme: CardThemeData(

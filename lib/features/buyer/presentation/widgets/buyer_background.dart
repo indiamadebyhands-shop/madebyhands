@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:madebyhands/core/theme/app_theme.dart';
 import 'package:madebyhands/features/buyer/presentation/theme/buyer_theme.dart';
 import 'package:madebyhands/features/buyer/presentation/widgets/arch_backdrop.dart';
 
@@ -12,9 +14,12 @@ class BuyerBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: BuyerTheme.data,
-      child: ColoredBox(color: BuyerColors.paper, child: child),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: defaultSystemUiOverlayStyle,
+      child: Theme(
+        data: BuyerTheme.data,
+        child: ColoredBox(color: BuyerColors.paper, child: child),
+      ),
     );
   }
 }
@@ -29,20 +34,24 @@ class BuyerTabFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        const Positioned.fill(child: ColoredBox(color: BuyerColors.paper)),
-        const Positioned(top: 0, left: 0, right: 0, child: ScallopedHeader()),
-        Positioned.fill(
-          child: SafeArea(
-            minimum: EdgeInsets.zero,
-            child: Padding(
-              padding: const EdgeInsets.only(top: ScallopedHeader.contentInset),
-              child: child,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: pinkArchSystemUiOverlayStyle,
+      child: Stack(
+        children: [
+          const Positioned.fill(child: ColoredBox(color: BuyerColors.paper)),
+          const Positioned(top: 0, left: 0, right: 0, child: ScallopedHeader()),
+          Positioned.fill(
+            child: SafeArea(
+              minimum: EdgeInsets.zero,
+              child: Padding(
+                padding:
+                    const EdgeInsets.only(top: ScallopedHeader.contentInset),
+                child: child,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -28,7 +29,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           'Discover unique handmade pieces that carry the spirit of the artist who made them.',
       imageUrl:
           'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?q=80&w=1000&auto=format&fit=crop',
-      color: AppColors.primary,
+      color: AppColors.pinkArchTop,
     ),
     OnboardingData(
       title: 'Stories in Every Thread',
@@ -44,7 +45,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           'A marketplace built for creators, by people who value the beauty of the handmade.',
       imageUrl:
           'https://images.unsplash.com/photo-1513364776144-60967b0f800f?q=80&w=1000&auto=format&fit=crop',
-      color: AppColors.primaryDark,
+      color: AppColors.pinkArchTop,
     ),
   ];
 
@@ -65,87 +66,96 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: BlocConsumer<AuthBloc, AuthState>(
-        listener: (context, state) {
-          if (state is AuthFailure) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: Colors.redAccent,
-              ),
-            );
-          }
-        },
-        builder: (context, state) {
-          return Stack(
-            children: [
-              // Background Image with crossfade
-              AnimatedSwitcher(
-                duration: 800.ms,
-                child: Container(
-                  key: ValueKey(_currentPage),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: AppColors.background,
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: BlocConsumer<AuthBloc, AuthState>(
+          listener: (context, state) {
+            if (state is AuthFailure) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: Colors.redAccent,
+                ),
+              );
+            }
+          },
+          builder: (context, state) {
+            return Stack(
+              children: [
+                // Background Image with crossfade
+                AnimatedSwitcher(
+                  duration: 800.ms,
+                  child: Container(
+                    key: ValueKey(_currentPage),
+                    decoration: BoxDecoration(
+                      image: DecorationImage(
+                        image: NetworkImage(
+                          _onboardingPages[_currentPage].imageUrl,
+                        ),
+                        fit: BoxFit.cover,
+                        colorFilter: ColorFilter.mode(
+                          Colors.black.withValues(alpha: 0.35),
+                          BlendMode.darken,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Glassmorphic Gradient Overlay
+                Container(
                   decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: NetworkImage(
-                        _onboardingPages[_currentPage].imageUrl,
-                      ),
-                      fit: BoxFit.cover,
-                      colorFilter: ColorFilter.mode(
-                        Colors.black.withValues(alpha: 0.35),
-                        BlendMode.darken,
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.2),
+                        AppColors.background.withValues(alpha: 0.95),
+                        AppColors.background,
+                      ],
+                      stops: const [0.0, 0.4, 0.7, 0.85],
+                    ),
+                  ),
+                ),
+
+                // Main content scrolls on short screens instead of overflowing.
+                SafeArea(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) => SingleChildScrollView(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildHeader(),
+                            Column(
+                              children: [
+                                const SizedBox(height: 24),
+                                _buildPages(context),
+                                _buildFooter(state),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-
-              // Glassmorphic Gradient Overlay
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withValues(alpha: 0.2),
-                      AppColors.background.withValues(alpha: 0.95),
-                      AppColors.background,
-                    ],
-                    stops: const [0.0, 0.4, 0.7, 0.85],
-                  ),
-                ),
-              ),
-
-              // Main content scrolls on short screens instead of overflowing.
-              SafeArea(
-                child: LayoutBuilder(
-                  builder: (context, constraints) => SingleChildScrollView(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: constraints.maxHeight,
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _buildHeader(),
-                          Column(
-                            children: [
-                              const SizedBox(height: 24),
-                              _buildPages(context),
-                              _buildFooter(state),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -245,7 +255,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 controller: _pageController,
                 count: _onboardingPages.length,
                 effect: const ExpandingDotsEffect(
-                  activeDotColor: AppColors.primary,
+                  activeDotColor: AppColors.pinkArchTop,
                   dotColor: AppColors.outline,
                   dotHeight: 8,
                   dotWidth: 8,
@@ -259,7 +269,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     duration: 600.ms,
                     curve: Curves.easeInOut,
                   ),
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: AppColors.pinkArchTop,
                   elevation: 0,
                   child: const Icon(
                     Icons.arrow_forward_ios,
@@ -273,6 +283,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             const SizedBox(height: 20),
             if (kGoogleSignInEnabled)
               FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.pinkArchTop,
+                  foregroundColor: Colors.white,
+                ),
                 onPressed: isLoading ? null : _handleLogin,
                 icon: isLoading
                     ? const SizedBox(
@@ -295,7 +309,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.08),
+                  color: AppColors.pinkArchTop.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Text(
@@ -312,7 +326,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   width: 24,
                   child: Checkbox(
                     value: _termsAccepted,
-                    activeColor: AppColors.primary,
+                    activeColor: AppColors.pinkArchTop,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(4),
                     ),
@@ -343,7 +357,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         child: const Text(
                           'Terms and Conditions',
                           style: TextStyle(
-                            color: AppColors.primary,
+                            color: AppColors.pinkArchTop,
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             decoration: TextDecoration.underline,
@@ -368,7 +382,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         child: const Text(
                           'Privacy Policy',
                           style: TextStyle(
-                            color: AppColors.primary,
+                            color: AppColors.pinkArchTop,
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             decoration: TextDecoration.underline,

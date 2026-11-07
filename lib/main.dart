@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:madebyhands/core/services/notification_messaging_service.dart';
@@ -20,6 +21,7 @@ import 'package:madebyhands/init_dependencies.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setSystemUIOverlayStyle(defaultSystemUiOverlayStyle);
   await initDependencies();
   await NotificationMessagingService.initializeSystem();
   runApp(
