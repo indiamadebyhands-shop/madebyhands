@@ -149,6 +149,11 @@ abstract final class BuyerTheme {
         iconTheme: const IconThemeData(color: BuyerColors.maroon),
         actionsIconTheme: const IconThemeData(color: BuyerColors.maroon),
         titleTextStyle: sans(19, FontWeight.w800, color: BuyerColors.maroon),
+        systemOverlayStyle: defaultSystemUiOverlayStyle,
+      ),
+      navigationBarTheme: const NavigationBarThemeData(
+        backgroundColor: Color(0xFFFCF0DE),
+        indicatorColor: BuyerColors.blush,
       ),
       // The product card: ivory surface, thin gold outline, 20px corners and
       // a soft maroon-tinted shadow.
