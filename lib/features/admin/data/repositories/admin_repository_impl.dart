@@ -74,33 +74,23 @@ class AdminRepositoryImpl implements AdminRepository {
   Future<Either<Failure, List<String>>> resetCategoriesToDefaults() =>
       _guard(remoteDataSource.resetCategoriesToDefaults);
 
-  // Goes through the payment API, not a direct Firestore write: suspending
-  // must disable the user's actual Firebase Auth account and revoke any
-  // open session, which only the Admin SDK (server-side) can do.
+  // Every moderation stage goes through the server. In particular, web
+  // clients must not depend on the admin's Firestore claims being refreshed
+  // before the first and second warning can be written.
   @override
   Future<Either<Failure, void>> setUserModeration({
     required String uid,
     required int level,
     required String reason,
     bool immediate = false,
-  }) => _guard(() async {
-    // Warning stages remain admin-controlled Firestore writes and work
-    // immediately. Only disabling/re-enabling Firebase Auth needs the
-    // privileged server endpoint.
-    if (level == 0 || level == 3) {
-      await userModerationApi.setModeration(
-        uid: uid,
-        level: level,
-        reason: reason,
-        immediate: immediate,
-      );
-    }
-    await remoteDataSource.setModerationState(
+  }) => _guard(
+    () => userModerationApi.setModeration(
       uid: uid,
       level: level,
       reason: reason,
-    );
-  });
+      immediate: immediate,
+    ),
+  );
 
   @override
   Future<Either<Failure, void>> reviewProduct({

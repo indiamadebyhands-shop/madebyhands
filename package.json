@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "bash vercel-build.sh",
-    "test": "node --test test/api/payment_server.test.js test/api/handlers.test.js"
+    "test": "node --test test/api/payment_server.test.js test/api/handlers.test.js test/api/suspend_user.test.js"
   },
   "engines": {
     "node": ">=18"
